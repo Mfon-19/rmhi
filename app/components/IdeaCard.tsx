@@ -12,6 +12,7 @@ export interface IdeaData {
     avatar: string;
     role?: string;
     company?: string;
+    profileUrl?: string;
   };
   timestamp: string;
   categories: string[];
@@ -79,9 +80,19 @@ export default function IdeaCard({
             className="w-10 h-10 rounded-full object-cover"
           />
           <div className="flex items-center space-x-2">
-            <span className="font-semibold text-foreground">
-              {idea.author.name}
-            </span>
+            {idea.author.profileUrl ? (
+              <a
+                href={idea.author.profileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer">
+                {idea.author.name}
+              </a>
+            ) : (
+              <span className="font-semibold text-foreground">
+                {idea.author.name}
+              </span>
+            )}
             {idea.author.role && (
               <span className="text-xs text-secondary">
                 {idea.author.company
@@ -119,8 +130,8 @@ export default function IdeaCard({
 
       {/* Body */}
       <div className="px-4 pb-3">
-        <p className="text-foreground leading-relaxed">
-          {displayBody}
+        <div className="text-foreground leading-relaxed">
+          <FormattedText text={displayBody} />
           {shouldTruncate && !isExpanded && (
             <button
               onClick={() => setIsExpanded(true)}
@@ -135,7 +146,7 @@ export default function IdeaCard({
               Show less
             </button>
           )}
-        </p>
+        </div>
       </div>
 
       {/* Tags */}
@@ -177,6 +188,75 @@ export default function IdeaCard({
         <ActionButton icon={<ShareIcon />} onClick={handleShare} />
       </div>
     </article>
+  );
+}
+
+function FormattedText({ text }: { text: string }) {
+  const formatText = (input: string) => {
+    // Split by double newlines first to handle paragraphs
+    const paragraphs = input.split("\n\n");
+
+    return paragraphs
+      .map((paragraph, paragraphIndex) => {
+        const trimmedParagraph = paragraph.trim();
+        if (!trimmedParagraph) return null;
+
+        // Check if paragraph starts with **Problem:** or **Solution:**
+        const isProblemSection = trimmedParagraph.startsWith("**Problem:**");
+        const isSolutionSection = trimmedParagraph.startsWith("**Solution:**");
+
+        if (isProblemSection || isSolutionSection) {
+          // Extract the header and content
+          const headerMatch = trimmedParagraph.match(
+            /^\*\*(Problem|Solution):\*\*\s*([\s\S]*)/
+          );
+          if (headerMatch) {
+            const [, headerType, content] = headerMatch;
+            return (
+              <div key={paragraphIndex} className="mt-6 first:mt-0">
+                <h5 className="text-lg font-bold text-primary mb-3 border-l-4 border-primary pl-3">
+                  {headerType}:
+                </h5>
+                <div className="ml-4">
+                  <FormattedParagraph text={content} />
+                </div>
+              </div>
+            );
+          }
+        }
+
+        // Regular paragraph
+        return (
+          <div key={paragraphIndex} className="mb-4 first:mb-2">
+            <FormattedParagraph text={trimmedParagraph} />
+          </div>
+        );
+      })
+      .filter(Boolean);
+  };
+
+  return <div>{formatText(text)}</div>;
+}
+
+function FormattedParagraph({ text }: { text: string }) {
+  // Process **bold** text within a paragraph
+  const parts = text.split(/(\*\*[^*]+\*\*)/);
+
+  return (
+    <p className="leading-relaxed">
+      {parts.map((part, partIndex) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          // Remove ** and make bold
+          const boldText = part.slice(2, -2);
+          return (
+            <strong key={partIndex} className="font-semibold text-foreground">
+              {boldText}
+            </strong>
+          );
+        }
+        return part;
+      })}
+    </p>
   );
 }
 

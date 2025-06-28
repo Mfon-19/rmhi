@@ -10,9 +10,9 @@ export default function TopNavigation() {
       <div className="flex items-center justify-between h-full px-4 max-w-7xl mx-auto">
         {/* Logo */}
         <div className="flex items-center space-x-2">
-          <span className="text-2xl">🧠</span>
+          <span className="text-2xl">🏆</span>
           <span className="font-semibold text-lg text-foreground">
-            RateMyIdea
+            HackathonHub
           </span>
         </div>
 
@@ -21,7 +21,7 @@ export default function TopNavigation() {
           <div className="relative w-full">
             <input
               type="text"
-              placeholder="Search ideas…"
+              placeholder="Search hackathon projects…"
               className="w-full px-4 py-2 pl-10 bg-gray-50 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
             <svg
@@ -41,10 +41,10 @@ export default function TopNavigation() {
 
         {/* Desktop Navigation Links */}
         <div className="hidden lg:flex items-center space-x-6">
-          <DropdownButton label="Community" />
-          <DropdownButton label="Categories" />
+          <DropdownButton label="Hackathons" />
+          <DropdownButton label="Technologies" />
           <button className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors font-medium">
-            Post Idea
+            Submit Project
           </button>
           <button className="text-secondary hover:text-foreground transition-colors">
             Sign in
@@ -99,13 +99,13 @@ export default function TopNavigation() {
           <div className="px-4 py-2">
             <input
               type="text"
-              placeholder="Search ideas…"
+              placeholder="Search hackathon projects…"
               className="w-full px-4 py-2 pl-10 bg-gray-50 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
           <div className="px-4 py-2 space-y-2">
-            <MobileNavItem label="Community" />
-            <MobileNavItem label="Categories" />
+            <MobileNavItem label="Hackathons" />
+            <MobileNavItem label="Technologies" />
             <div className="pt-2 border-t border-border">
               <button className="text-secondary hover:text-foreground block w-full text-left py-2">
                 Sign in

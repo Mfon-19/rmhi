@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import IdeaCard, { IdeaData } from "./IdeaCard";
-import { generateMockIdeas } from "../utils/mockData";
+import {
+  getHackathonIdeas,
+  getWinningIdeas,
+  getRandomIdeas,
+} from "../utils/hackathonData";
 
 interface MainFeedProps {
   onPostIdea: () => void;
@@ -18,7 +22,7 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
   useEffect(() => {
     // Simulate loading
     setTimeout(() => {
-      setIdeas(generateMockIdeas(12));
+      setIdeas(getHackathonIdeas(12));
       setLoading(false);
     }, 1000);
   }, []);
@@ -61,7 +65,18 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
       case "popular":
         return b.stats.likes - a.stats.likes;
       case "recent":
-        return 0; // Would sort by actual timestamp in real app
+        // Sort winners first, then by likes
+        if (
+          a.author.role?.includes("Winner") &&
+          !b.author.role?.includes("Winner")
+        )
+          return -1;
+        if (
+          !a.author.role?.includes("Winner") &&
+          b.author.role?.includes("Winner")
+        )
+          return 1;
+        return b.stats.likes - a.stats.likes;
       case "trending":
         return (
           b.stats.likes + b.stats.comments - (a.stats.likes + a.stats.comments)
@@ -118,7 +133,7 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
       <div className="flex justify-center mt-8">
         <button
           onClick={() => {
-            const newIdeas = generateMockIdeas(6);
+            const newIdeas = getRandomIdeas(6);
             setIdeas((prev) => [...prev, ...newIdeas]);
           }}
           className="px-6 py-3 border border-border rounded-lg hover:bg-gray-50 transition-colors text-secondary hover:text-foreground">
@@ -140,7 +155,7 @@ function SortDropdown({
 
   const options: { value: SortOption; label: string }[] = [
     { value: "popular", label: "Popular" },
-    { value: "recent", label: "Recent" },
+    { value: "recent", label: "Winners First" },
     { value: "trending", label: "Trending" },
     { value: "most-liked", label: "Most Liked" },
   ];
