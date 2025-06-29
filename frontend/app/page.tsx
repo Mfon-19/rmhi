@@ -6,10 +6,16 @@ import LeftSidebar from "./components/LeftSidebar";
 import MainFeed from "./components/MainFeed";
 import RightSidebar from "./components/RightSidebar";
 import PostIdeaModal from "./components/PostIdeaModal";
+import { auth } from "./utils/firebase";
 
 export default function Home() {
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  let isLoggedIn = false;
+  if (auth.currentUser) {
+    isLoggedIn = true;
+  }
 
   const handlePostIdea = () => {
     setIsPostModalOpen(true);
@@ -21,20 +27,13 @@ export default function Home() {
 
   const handleSubmitIdea = (ideaData: any) => {
     console.log("New idea submitted:", ideaData);
-    // In a real app, this would submit to an API
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Navigation */}
       <TopNavigation />
-
-      {/* Main Layout */}
       <div className="flex">
-        {/* Left Sidebar */}
         <LeftSidebar isOpen={isSidebarOpen} />
-
-        {/* Main Content Area */}
         <div
           className={`flex-1 transition-all duration-300 ${
             isSidebarOpen ? "ml-60" : "ml-0"
@@ -43,19 +42,13 @@ export default function Home() {
             <MainFeed onPostIdea={handlePostIdea} />
           </div>
         </div>
-
-        {/* Right Sidebar */}
         <RightSidebar />
       </div>
-
-      {/* Post Idea Modal */}
       <PostIdeaModal
         isOpen={isPostModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleSubmitIdea}
       />
-
-      {/* Mobile Floating Action Button */}
       <button
         onClick={handlePostIdea}
         className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-colors z-40 flex items-center justify-center">

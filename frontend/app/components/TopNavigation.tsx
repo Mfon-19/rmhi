@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { auth } from "../utils/firebase";
+import useAuth from "../utils/useAuth";
 
 export default function TopNavigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, isLoggedIn } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-[72px] bg-white border-b border-border shadow-sm">
@@ -43,15 +46,41 @@ export default function TopNavigation() {
         <div className="hidden lg:flex items-center space-x-6">
           <DropdownButton label="Hackathons" />
           <DropdownButton label="Technologies" />
-          <button className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors font-medium">
+          <button className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors font-medium hover:cursor-pointer">
             Submit Project
           </button>
-          <button className="text-secondary hover:text-foreground transition-colors">
-            Sign in
-          </button>
-          <button className="px-4 py-2 border border-border rounded-full hover:bg-gray-50 transition-colors">
-            Sign up
-          </button>
+
+          {isLoggedIn ? (
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
+            </div>
+          ) : (
+            <>
+              <button
+                className="text-secondary hover:text-foreground transition-colors hover:cursor-pointer"
+                onClick={() => (window.location.href = "/signin")}>
+                Sign in
+              </button>
+              <button
+                className="px-4 py-2 border border-border rounded-full hover:bg-gray-50 transition-colors hover:cursor-pointer"
+                onClick={() => (window.location.href = "/signup")}>
+                Sign up
+              </button>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -107,12 +136,36 @@ export default function TopNavigation() {
             <MobileNavItem label="Hackathons" />
             <MobileNavItem label="Technologies" />
             <div className="pt-2 border-t border-border">
-              <button className="text-secondary hover:text-foreground block w-full text-left py-2">
-                Sign in
-              </button>
-              <button className="text-secondary hover:text-foreground block w-full text-left py-2">
-                Sign up
-              </button>
+              {isLoggedIn ? (
+                /* User profile section when logged in */
+                <div className="flex items-center space-x-3 py-2">
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                  </div>
+                  <span className="text-foreground">Profile</span>
+                </div>
+              ) : (
+                /* Sign in/Sign up buttons when not logged in */
+                <>
+                  <button className="text-secondary hover:text-foreground block w-full text-left py-2">
+                    Sign in
+                  </button>
+                  <button className="text-secondary hover:text-foreground block w-full text-left py-2">
+                    Sign up
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
