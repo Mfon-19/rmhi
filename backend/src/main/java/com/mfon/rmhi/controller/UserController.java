@@ -1,5 +1,6 @@
 package com.mfon.rmhi.controller;
 
+import com.mfon.rmhi.model.Idea;
 import com.mfon.rmhi.repository.UserRepository;
 import com.mfon.rmhi.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -15,7 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api")
 public class UserController {
     private final UserService userService;
     private final UserRepository userRepository;
@@ -30,12 +31,18 @@ public class UserController {
                                            @RequestBody Map<String, String> request) {
         String username = request.get("username");
 
-        // Check if username exists
         if (userRepository.existsUserByUsername(username)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
         }
 
         userService.registerUser(username, jwt);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PostMapping("/create-idea")
+    public ResponseEntity<Integer> createIdea(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, Idea> request) {
+        Idea idea = request.get("idea");
+        userService.createIdea(idea);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 }

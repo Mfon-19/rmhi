@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import CategoryChip, { getCategoryVariant } from "./CategoryChip";
+import { createIdea } from "../utils/actions";
+import { Idea, Category } from "../utils/types";
+import { auth } from "../utils/firebase";
+import { toast } from "sonner";
 
 interface PostIdeaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit?: (idea: IdeaFormData) => void;
 }
 
 export interface IdeaFormData {
@@ -31,11 +34,22 @@ const SUGGESTED_CATEGORIES = [
   "Entertainment",
 ];
 
-export default function PostIdeaModal({
-  isOpen,
-  onClose,
-  onSubmit,
-}: PostIdeaModalProps) {
+const DISPLAY_NAME_TO_CATEGORY: Record<string, Category> = {
+  MobileApp: "MOBILE_APP",
+  AI: "AI",
+  FinTech: "FIN_TECH",
+  Web3: "WEB3",
+  Health: "HEALTH",
+  Education: "EDUCATION",
+  Gaming: "GAMING",
+  SaaS: "SAAS",
+  "E-commerce": "E_COMMERCE",
+  Social: "SOCIAL",
+  Productivity: "PRODUCTIVITY",
+  Entertainment: "ENTERTAINMENT",
+};
+
+export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
   const [formData, setFormData] = useState<IdeaFormData>({
     title: "",
     categories: [],
@@ -46,11 +60,38 @@ export default function PostIdeaModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit?.(formData);
-    console.log("Submitting idea:", formData);
-    handleClose();
+
+    if (!auth.currentUser) {
+      console.error("User not authenticated");
+      toast.error("Please sign in to post an idea");
+      return;
+    }
+
+    console.log("User ID:", auth.currentUser.uid); 
+    console.log("Form data:", formData); 
+
+    const idea: Idea = {
+      title: formData.title,
+      description: formData.description,
+      categories: formData.categories.map(
+        (cat) =>
+          DISPLAY_NAME_TO_CATEGORY[cat] ||
+          (cat.toUpperCase().replace(/[^A-Z0-9]/g, "_") as Category)
+      ),
+      userId: auth.currentUser.uid,
+    };
+
+    try {
+      await createIdea(idea);
+      console.log("Idea created successfully:", idea);
+      toast.success("Idea posted successfully!");
+      handleClose();
+    } catch (error) {
+      console.error("Failed to create idea:", error);
+      toast.error("Failed to create idea");
+    }
   };
 
   const handleClose = () => {
@@ -113,7 +154,7 @@ export default function PostIdeaModal({
           </h2>
           <button
             onClick={handleClose}
-            className="p-2 text-secondary hover:text-foreground transition-colors">
+            className="p-2 text-secondary hover:text-foreground hover:cursor-pointer transition-colors">
             <svg
               className="w-5 h-5"
               fill="none"
@@ -169,7 +210,7 @@ export default function PostIdeaModal({
                     <button
                       type="button"
                       onClick={() => removeCategory(category)}
-                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600">
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 hover:cursor-pointer">
                       ×
                     </button>
                   </div>
@@ -190,7 +231,7 @@ export default function PostIdeaModal({
                     key={category}
                     type="button"
                     onClick={() => addCategory(category)}
-                    className="text-xs px-2 py-1 border border-border rounded-full hover:bg-gray-50 transition-colors">
+                    className="text-xs px-2 py-1 border border-border rounded-full hover:bg-gray-50 hover:cursor-pointer transition-colors">
                     #{category}
                   </button>
                 ))}
@@ -213,7 +254,7 @@ export default function PostIdeaModal({
               <button
                 type="button"
                 onClick={handleAddCustomCategory}
-                className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 hover:cursor-pointer transition-colors">
                 Add
               </button>
             </div>
@@ -259,7 +300,7 @@ export default function PostIdeaModal({
                 <button
                   type="button"
                   onClick={removeImage}
-                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors">
+                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 hover:cursor-pointer transition-colors">
                   <svg
                     className="w-4 h-4"
                     fill="none"
@@ -285,7 +326,7 @@ export default function PostIdeaModal({
                 />
                 <label
                   htmlFor="image-upload"
-                  className="cursor-pointer flex flex-col items-center space-y-2">
+                  className="cursor-pointer hover:cursor-pointer flex flex-col items-center space-y-2">
                   <svg
                     className="w-8 h-8 text-secondary"
                     fill="none"
@@ -314,13 +355,13 @@ export default function PostIdeaModal({
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 text-secondary hover:text-foreground transition-colors">
+              className="px-4 py-2 text-secondary hover:text-foreground hover:cursor-pointer transition-colors">
               Cancel
             </button>
             <button
               type="submit"
               disabled={!formData.title.trim() || !formData.description.trim()}
-              className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
+              className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
               Publish Idea
             </button>
           </div>

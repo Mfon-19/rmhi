@@ -25,10 +25,6 @@ export default function Home() {
     setIsPostModalOpen(false);
   };
 
-  const handleSubmitIdea = (ideaData: any) => {
-    console.log("New idea submitted:", ideaData);
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <TopNavigation />
@@ -47,7 +43,6 @@ export default function Home() {
       <PostIdeaModal
         isOpen={isPostModalOpen}
         onClose={handleCloseModal}
-        onSubmit={handleSubmitIdea}
       />
       <button
         onClick={handlePostIdea}
