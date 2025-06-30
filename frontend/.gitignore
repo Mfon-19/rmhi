@@ -40,6 +40,16 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Secret files and directories
+/app/secret
+/frontend/app/secret
+/backend/src/main/resources/secret
+/backend/src/main/resources/secrets
+/backend/build/resources/main/secrets
+**serviceAccount.json
+src/main/resources/
+build/
+.gradle
 
 HELP.md
 target/
@@ -74,11 +84,3 @@ build/
 
 ### VS Code ###
 .vscode/
-
-/app/secret
-
-/backend/src/main/resources/secret/firebase/serviceAccount.json
-
-src/main/resources/
-build
-.gradle
