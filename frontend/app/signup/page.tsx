@@ -87,9 +87,7 @@ export default function SignUp() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-primary mb-2">
-            RateMyHackathonIdea.io
-          </h1>
+          <h1 className="text-4xl font-bold text-primary mb-2">Eureka</h1>
           <h2 className="text-2xl font-semibold text-foreground mb-2">
             Join the community
           </h2>

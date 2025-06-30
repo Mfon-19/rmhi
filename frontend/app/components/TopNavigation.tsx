@@ -14,9 +14,7 @@ export default function TopNavigation() {
         {/* Logo */}
         <div className="flex items-center space-x-2">
           <span className="text-2xl">🏆</span>
-          <span className="font-semibold text-lg text-foreground">
-            HackathonHub
-          </span>
+          <span className="font-semibold text-lg text-foreground">Eureka</span>
         </div>
 
         {/* Desktop Search Bar */}

@@ -1,3 +1,7 @@
+# Eureka
+
+A community-driven platform where makers post ideas and get feedback from the crowd.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

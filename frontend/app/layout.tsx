@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RateMyHackathonIdea.io - Share and Rate Ideas",
+  title: "Eureka - Share and Rate Ideas",
   description:
     "A community-driven platform where makers post ideas and get feedback from the crowd",
 };
