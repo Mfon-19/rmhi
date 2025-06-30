@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/app/secret
+
+/backend/src/main/resources/secret/firebase/serviceAccount.json
+**serviceAccount.json
+src/main/resources/
+build
+.gradle

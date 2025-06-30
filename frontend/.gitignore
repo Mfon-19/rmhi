@@ -77,4 +77,8 @@ build/
 
 /app/secret
 
-/backend/src/main/resources/secret
+/backend/src/main/resources/secret/firebase/serviceAccount.json
+
+src/main/resources/
+build
+.gradle
