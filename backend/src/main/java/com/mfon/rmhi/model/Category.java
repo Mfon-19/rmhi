@@ -1,6 +1,17 @@
 package com.mfon.rmhi.model;
 
-public enum Category {
-    MOBILE_APP, AI, FIN_TECH, WEB3, HEALTH, EDUCATION,
-    GAMING, SAAS, E_COMMERCE, SOCIAL, PRODUCTIVITY, ENTERTAINMENT
+import jakarta.persistence.*;
+import lombok.Getter;
+
+@Entity
+@Table(name = "categories")
+@Getter
+public class Category {
+
+    @Id
+    @GeneratedValue
+    private Integer id;
+
+    @Column(unique = true, nullable = false)
+    private String name;
 }

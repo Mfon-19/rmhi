@@ -40,9 +40,9 @@ export async function createIdea(idea: Idea) {
   } catch {
     throw new Error("Invalid or expired ID token");
   }
-  console.log("sending data: ", JSON.stringify(idea, null, 2));
+
   try {
-    const result = await fetch(`${API_URL}/create-idea`, {
+    const response = await fetch(`${API_URL}/create-idea`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -51,9 +51,11 @@ export async function createIdea(idea: Idea) {
       body: JSON.stringify({ idea: idea }),
     });
 
-    if (!result.ok) {
+    if (response.status !== 200) {
       throw new Error("Failed to create idea");
     }
+    const result = await response.json();
+    return { ideaId: result.id };
   } catch (error) {
     console.error("Failed to create idea");
   }

@@ -27,11 +27,10 @@ public class Idea {
     @Column(nullable = false)
     private Integer likes = 0;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @Enumerated(EnumType.STRING)
-    @CollectionTable(name = "idea_categories",
-            joinColumns = @JoinColumn(name = "idea_id"))
-    @Column(name = "category", nullable = false)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "idea_categories",
+            joinColumns        = @JoinColumn(name = "idea_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id"))
     private Set<Category> categories = new HashSet<>();
 
     @Column(name = "user_id")

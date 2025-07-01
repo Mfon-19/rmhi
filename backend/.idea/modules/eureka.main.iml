@@ -9,11 +9,11 @@
     <facet type="jpa" name="JPA">
       <configuration>
         <setting name="validation-enabled" value="true" />
+        <setting name="provider-name" value="Hibernate" />
         <datasource-mapping>
-          <factory-entry name="entityManagerFactory" value="d686eb78-f2b9-4301-a97e-e607f87e245e" />
+          <factory-entry name="entityManagerFactory" value="5e288864-e392-4dc9-a8eb-405fedb64257" />
         </datasource-mapping>
         <naming-strategy-map />
-        <deploymentDescriptor name="persistence.xml" url="file://$MODULE_DIR$/../../src/main/java/com/mfon/rmhi/model/User.java" />
       </configuration>
     </facet>
   </component>

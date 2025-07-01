@@ -1,6 +1,7 @@
 package com.mfon.rmhi.controller;
 
 import com.mfon.rmhi.model.Idea;
+import com.mfon.rmhi.model.ScrapedIdea;
 import com.mfon.rmhi.repository.UserRepository;
 import com.mfon.rmhi.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -40,9 +41,22 @@ public class UserController {
     }
 
     @PostMapping("/create-idea")
-    public ResponseEntity<Integer> createIdea(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, Idea> request) {
+    public ResponseEntity<Map<String, Long>> createIdea(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, Idea> request) {
+
         Idea idea = request.get("idea");
-        userService.createIdea(idea);
-        return new ResponseEntity<>(HttpStatus.OK);
+        Long id   = userService.createIdea(idea);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(Map.of("id", id));
+    }
+
+    @PostMapping("/create-scraped-idea")
+    public ResponseEntity<Map<String, Long>> createScrapedIdea(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, ScrapedIdea> request) {
+        ScrapedIdea idea = request.get("idea");
+        Long id = userService.saveScrapedIdea(idea);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(Map.of("id", id));
     }
 }

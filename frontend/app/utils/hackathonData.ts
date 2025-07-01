@@ -19,7 +19,6 @@ interface HackathonIdea {
   comments: any[];
 }
 
-// Sample avatars for hackathon creators
 const HACKATHON_AVATARS = [
   "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face",
   "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
@@ -56,7 +55,6 @@ function generateTimestamp(): string {
 }
 
 function transformCategories(builtWith: string[]): string[] {
-  // Map technical terms to more user-friendly categories
   const categoryMap: { [key: string]: string } = {
     python: "Python",
     javascript: "JavaScript",

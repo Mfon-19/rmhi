@@ -1,0 +1,24 @@
+package com.mfon.rmhi.model;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "scraped_idea_technologies")
+public class ScrapedIdeaTechnology {
+
+    @Id
+    @Column(name = "idea_id")
+    private Long ideaId;
+
+    @Id
+    @Column(name = "technology_id")
+    private Integer technologyId;
+
+    @ManyToOne
+    @JoinColumn(name = "idea_id", insertable = false, updatable = false)
+    private ScrapedIdea idea;
+
+    @ManyToOne
+    @JoinColumn(name = "technology_id", insertable = false, updatable = false)
+    private Technology technology;
+}
