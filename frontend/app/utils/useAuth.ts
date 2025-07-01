@@ -18,7 +18,7 @@ export default function useAuth() {
 
 export async function establishSession() {
   const idToken = await auth.currentUser!.getIdToken(true);
-
+  console.log("id token: ", idToken)
   await fetch("/api/set-token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

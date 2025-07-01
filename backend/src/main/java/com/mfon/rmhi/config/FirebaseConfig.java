@@ -15,7 +15,7 @@ public class FirebaseConfig {
     @Bean
     FirebaseApp firebaseApp() throws IOException {
         GoogleCredentials creds = GoogleCredentials.fromStream(
-                new FileInputStream("/Users/mfonudoh/Desktop/Programs/rmhi/backend/src/main/resources/secret/firebase/serviceAccount.json"));
+                new FileInputStream("/Users/mfonudoh/Desktop/Programs/eureka/backend/src/main/resources/secrets/firebase/serviceAccount.json"));
 
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(creds)

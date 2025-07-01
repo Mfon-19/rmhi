@@ -1,8 +1,10 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { Idea } from "./types";
+import { Idea, ScrapedIdea } from "./types";
 import { adminAuth } from "./firebase-admin";
+import fs from "fs/promises";
+import path from "path";
 
 const API_URL = process.env.API_URL;
 
@@ -28,19 +30,23 @@ export async function registerUsername(idToken: string, username: string) {
   }
 }
 
-export async function createIdea(idea: Idea) {
+async function getToken() {
   const cookieStore = await cookies();
   const token = cookieStore.get("idToken")?.value;
 
   if (!token) throw new Error("Unauthenticated");
 
-  let decoded;
   try {
-    decoded = await adminAuth.verifyIdToken(token, true);
+    await adminAuth.verifyIdToken(token, true);
   } catch {
     throw new Error("Invalid or expired ID token");
   }
+  console.log("token acquired successfully...")
+  return token;
+}
 
+export async function createIdea(idea: Idea) {
+  const token = await getToken();
   try {
     const response = await fetch(`${API_URL}/create-idea`, {
       method: "POST",
@@ -58,5 +64,70 @@ export async function createIdea(idea: Idea) {
     return { ideaId: result.id };
   } catch (error) {
     console.error("Failed to create idea");
+  }
+}
+
+export async function createScrapedIdea(scrapedIdea: ScrapedIdea) {
+  const token = await getToken();
+  try {
+    console.log("sending....")
+    const response = await fetch(`${API_URL}/create-scraped-idea`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ idea: scrapedIdea }),
+    });
+
+    if (response.status !== 200) {
+      throw new Error("Failed to create scraped idea");
+    }
+    const result = await response.json();
+    return result.id;
+  } catch (error) {
+    console.error("Failed to create scraped idea");
+  }
+}
+
+export async function importScrapedIdeas() {
+  try {
+    const ideasPath = path.resolve(process.cwd(), "ideas.json");
+    const raw = JSON.parse(await fs.readFile(ideasPath, "utf-8")) as {
+      scraped_ideas: ScrapedIdea[];
+    };
+
+    const ideas = raw.scraped_ideas;
+    console.log(`Starting import of ${ideas.length} scraped ideas`);
+
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const idea of ideas) {
+      try {
+        await createScrapedIdea(idea);
+        success += 1;
+        console.log(`✓ Imported: ${idea.project_name}`);
+      } catch (err) {
+        failed += 1;
+        const errorMsg = `Failed to import "${idea.project_name}": ${err}`;
+        console.error(`✗ ${errorMsg}`);
+        errors.push(errorMsg);
+      }
+    }
+
+    const result = {
+      total: ideas.length,
+      success,
+      failed,
+      errors: errors.slice(0, 10), // Return first 10 errors only
+    };
+
+    console.log(`Import completed: ${success}/${ideas.length} successful`);
+    return result;
+  } catch (error) {
+    console.error("Failed to import scraped ideas:", error);
+    throw new Error(`Import failed: ${error}`);
   }
 }

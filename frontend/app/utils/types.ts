@@ -18,3 +18,19 @@ export type Category =
   | "SOCIAL"
   | "PRODUCTIVITY"
   | "ENTERTAINMENT";
+
+export interface ScrapedIdea {
+  id?: number;
+  project_name: string;
+  likes: number;
+  submitted_to?: string;
+  winner: boolean;
+  created_by: string;
+  description: string;
+  technologies: string[];
+}
+
+export interface Technology {
+  id?: number;
+  name: string;
+}

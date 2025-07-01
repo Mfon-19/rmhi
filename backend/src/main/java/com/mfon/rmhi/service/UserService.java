@@ -57,7 +57,11 @@ public class UserService {
                 .stream()
                 .map(Technology::getName)
                 .collect(Collectors.toList());
+
+        scrapedIdea.setTechnologies(new java.util.HashSet<>());
+
         ScrapedIdea idea = scrapedIdeaRepository.save(scrapedIdea);
+
         ideaTechnologyRepository.addTechnologiesToIdea(
                 idea.getId(),
                 tags.toArray(new String[0])

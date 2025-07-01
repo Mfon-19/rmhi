@@ -1,11 +1,17 @@
 package com.mfon.rmhi.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
 @Table(name = "technologies")
+@Getter
+@Setter
 public class Technology {
 
     @Id
@@ -21,9 +27,12 @@ public class Technology {
     @OneToMany(mappedBy = "technology", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<TechnologyAlias> aliases = new HashSet<>();
 
-    public Integer getId() { return id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public Set<ScrapedIdea> getIdeas() { return ideas; }
-    public Set<TechnologyAlias> getAliases() { return aliases; }
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public Technology(String name) {
+        this.name = name;
+    }
+
+    public Technology() {
+
+    }
 }

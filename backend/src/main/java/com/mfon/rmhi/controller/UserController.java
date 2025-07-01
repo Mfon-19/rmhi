@@ -54,6 +54,7 @@ public class UserController {
     @PostMapping("/create-scraped-idea")
     public ResponseEntity<Map<String, Long>> createScrapedIdea(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, ScrapedIdea> request) {
         ScrapedIdea idea = request.get("idea");
+        System.out.println("Got idea: " + idea.getProjectName());
         Long id = userService.saveScrapedIdea(idea);
         return ResponseEntity
                 .status(HttpStatus.OK)
