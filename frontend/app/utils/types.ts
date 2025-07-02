@@ -26,8 +26,11 @@ export interface ScrapedIdea {
   submitted_to?: string;
   winner: boolean;
   created_by: string;
-  description: string;
   technologies: string[];
+  short_description?: string;
+  solution?: string;
+  problem_description?: string;
+  technical_details?: string;
 }
 
 export interface Technology {

@@ -49,7 +49,10 @@ CREATE TABLE IF NOT EXISTS scraped_ideas (
                                submitted_to VARCHAR(255),
                                winner       BOOLEAN         NOT NULL DEFAULT FALSE,
                                created_by   VARCHAR(255)    NOT NULL,
-                               description  TEXT
+                               short_description  VARCHAR(255),
+                               solution TEXT,
+                               problem_description TEXT,
+                               technical_details TEXT
 );
 
 CREATE TABLE IF NOT EXISTS technologies (

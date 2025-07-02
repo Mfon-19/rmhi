@@ -13,20 +13,6 @@ export default function Home() {
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const handleImport = async () => {
-    try {
-      const result = await importScrapedIdeas();
-      console.log(`Imported ${result.success}/${result.total} ideas`);
-    } catch (error) {
-      console.error("Import failed:", error);
-    }
-  };
-  handleImport()
-  let isLoggedIn = false;
-  if (auth.currentUser) {
-    isLoggedIn = true;
-  }
-
   const handlePostIdea = () => {
     setIsPostModalOpen(true);
   };

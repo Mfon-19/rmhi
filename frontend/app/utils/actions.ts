@@ -41,7 +41,7 @@ async function getToken() {
   } catch {
     throw new Error("Invalid or expired ID token");
   }
-  console.log("token acquired successfully...")
+  console.log("token acquired successfully...");
   return token;
 }
 
@@ -70,7 +70,7 @@ export async function createIdea(idea: Idea) {
 export async function createScrapedIdea(scrapedIdea: ScrapedIdea) {
   const token = await getToken();
   try {
-    console.log("sending....")
+    console.log("sending....");
     const response = await fetch(`${API_URL}/create-scraped-idea`, {
       method: "POST",
       headers: {
@@ -94,10 +94,24 @@ export async function importScrapedIdeas() {
   try {
     const ideasPath = path.resolve(process.cwd(), "ideas.json");
     const raw = JSON.parse(await fs.readFile(ideasPath, "utf-8")) as {
-      scraped_ideas: ScrapedIdea[];
+      ideas: any[];
     };
 
-    const ideas = raw.scraped_ideas;
+    const ideasData = raw.ideas;
+
+    const ideas: ScrapedIdea[] = ideasData.map((item) => ({
+      project_name: item.project_name,
+      likes: item.likes ?? 0,
+      submitted_to: item.submitted_to,
+      winner: item.winner,
+      created_by: item.created_by,
+      technologies: item.technologies ?? [],
+      short_description: item.short_description,
+      solution: item.solution,
+      problem_description: item.problem_description,
+      technical_details: item.technical_details,
+    }));
+
     console.log(`Starting import of ${ideas.length} scraped ideas`);
 
     let success = 0;

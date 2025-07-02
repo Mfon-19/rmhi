@@ -36,8 +36,17 @@ public class ScrapedIdea {
     @Column(name = "created_by", nullable = false)
     private String createdBy;
 
+    @Column(columnDefinition = "TEXT", name = "short_description")
+    private String shortDescription;
+
     @Column(columnDefinition = "TEXT")
-    private String description;
+    private String solution;
+
+    @Column(columnDefinition = "TEXT", name = "problem_description")
+    private String problemDescription;
+
+    @Column(columnDefinition = "TEXT", name = "technical_details")
+    private String technicalDetails;
 
     @ManyToMany
     @JoinTable(

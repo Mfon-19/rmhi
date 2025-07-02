@@ -47,3 +47,4 @@ next-env.d.ts
 src/main/resources/
 build
 .gradle
+/frontend/ideas.json
