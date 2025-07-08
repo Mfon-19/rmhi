@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "scraped_idea_technologies")
-public class ScrapedIdeaTechnology {
+public class IdeaTechnology {
 
     @Id
     @Column(name = "idea_id")
@@ -16,7 +16,7 @@ public class ScrapedIdeaTechnology {
 
     @ManyToOne
     @JoinColumn(name = "idea_id", insertable = false, updatable = false)
-    private ScrapedIdea idea;
+    private Idea idea;
 
     @ManyToOne
     @JoinColumn(name = "technology_id", insertable = false, updatable = false)

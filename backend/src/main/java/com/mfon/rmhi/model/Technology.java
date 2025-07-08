@@ -22,7 +22,7 @@ public class Technology {
     private String name;
 
     @ManyToMany(mappedBy = "technologies")
-    private Set<ScrapedIdea> ideas = new HashSet<>();
+    private Set<Idea> ideas = new HashSet<>();
 
     @OneToMany(mappedBy = "technology", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<TechnologyAlias> aliases = new HashSet<>();

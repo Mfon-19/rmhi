@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.query.Procedure;
 public interface IdeaRepository extends JpaRepository<Idea, Long> {
     @Procedure("add_tags_to_idea")
     void addTagsToIdea(Long p_idea_id, String[] p_tags);
+
+    Long id(Long id);
 }
