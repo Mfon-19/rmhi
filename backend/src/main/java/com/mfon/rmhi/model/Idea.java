@@ -55,6 +55,8 @@ public class Idea {
     )
     private Set<Technology> technologies = new HashSet<>();
 
+    private Integer rating;
+
     public Idea() {
     }
 }

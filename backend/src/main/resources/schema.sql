@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS ideas (
                                      short_description  VARCHAR(255),
                                      solution TEXT,
                                      problem_description TEXT,
-                                     technical_details TEXT
+                                     technical_details TEXT,
+                                     rating INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS comments (

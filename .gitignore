@@ -48,3 +48,5 @@ src/main/resources/
 build
 .gradle
 /frontend/ideas.json
+/scraper/node_modules
+/scraper/out
