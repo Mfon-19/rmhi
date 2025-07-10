@@ -38,14 +38,15 @@ public class UserService {
         List<String> tags = ideaToSave.getTechnologies()
                 .stream()
                 .map(Technology::getName)
-                .collect(Collectors.toList());
+                .toList();
 
         List<String> categories = ideaToSave.getCategories()
                 .stream()
                 .map(Category::getName)
-                .collect(Collectors.toList());
+                .toList();
 
         ideaToSave.setTechnologies(new java.util.HashSet<>());
+        ideaToSave.setCategories(new java.util.HashSet<>());
 
         Idea idea = ideaRepository.save(ideaToSave);
 

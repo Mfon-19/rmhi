@@ -49,4 +49,5 @@ build
 .gradle
 /frontend/ideas.json
 /scraper/node_modules
-/scraper/out
+/scraper/outscraper/
+/scraper/*

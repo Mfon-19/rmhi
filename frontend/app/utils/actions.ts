@@ -1,7 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { Idea, ScrapedIdea } from "./types";
+import { Idea } from "./types";
 import { adminAuth } from "./firebase-admin";
 import fs from "fs/promises";
 import path from "path";
@@ -48,6 +48,7 @@ async function getToken() {
 export async function createIdea(idea: Idea) {
   const token = await getToken();
   try {
+    console.log("sending....");
     const response = await fetch(`${API_URL}/create-idea`, {
       method: "POST",
       headers: {
@@ -55,29 +56,6 @@ export async function createIdea(idea: Idea) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ idea: idea }),
-    });
-
-    if (response.status !== 200) {
-      throw new Error("Failed to create idea");
-    }
-    const result = await response.json();
-    return { ideaId: result.id };
-  } catch (error) {
-    console.error("Failed to create idea");
-  }
-}
-
-export async function createScrapedIdea(scrapedIdea: ScrapedIdea) {
-  const token = await getToken();
-  try {
-    console.log("sending....");
-    const response = await fetch(`${API_URL}/create-scraped-idea`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ idea: scrapedIdea }),
     });
 
     if (response.status !== 200) {
@@ -99,11 +77,11 @@ export async function importScrapedIdeas() {
 
     const ideasData = raw.ideas;
 
-    const ideas: ScrapedIdea[] = ideasData.map((item) => ({
+    const ideas: Idea[] = ideasData.map((item) => ({
       project_name: item.project_name,
       likes: item.likes ?? 0,
-      submitted_to: item.submitted_to,
-      winner: item.winner,
+      categories: item.categories ?? [],
+      rating: item.rating ?? [],
       created_by: item.created_by,
       technologies: item.technologies ?? [],
       short_description: item.short_description,
@@ -120,7 +98,7 @@ export async function importScrapedIdeas() {
 
     for (const idea of ideas) {
       try {
-        await createScrapedIdea(idea);
+        await createIdea(idea);
         success += 1;
         console.log(`✓ Imported: ${idea.project_name}`);
       } catch (err) {
@@ -135,7 +113,7 @@ export async function importScrapedIdeas() {
       total: ideas.length,
       success,
       failed,
-      errors: errors.slice(0, 10), // Return first 10 errors only
+      errors: errors.slice(0, 10),
     };
 
     console.log(`Import completed: ${success}/${ideas.length} successful`);

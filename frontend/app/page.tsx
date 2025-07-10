@@ -6,7 +6,6 @@ import LeftSidebar from "./components/LeftSidebar";
 import MainFeed from "./components/MainFeed";
 import RightSidebar from "./components/RightSidebar";
 import PostIdeaModal from "./components/PostIdeaModal";
-import { auth } from "./utils/firebase";
 import { importScrapedIdeas } from "./utils/actions";
 
 export default function Home() {

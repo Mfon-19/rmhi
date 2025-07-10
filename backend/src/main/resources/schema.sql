@@ -105,11 +105,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION add_tags_to_idea(
+CREATE OR REPLACE PROCEDURE add_tags_to_idea(
     p_idea_id BIGINT,
     p_tags    TEXT[]
 )
-    RETURNS VOID
 AS $$
 BEGIN
     INSERT INTO idea_categories (idea_id, category_id)
@@ -118,7 +117,6 @@ BEGIN
     ON CONFLICT DO NOTHING;
 END;
 $$ LANGUAGE plpgsql;
-
 
 CREATE OR REPLACE FUNCTION get_or_create_technology(p_alias TEXT)
     RETURNS INT

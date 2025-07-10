@@ -1,5 +1,6 @@
 package com.mfon.rmhi.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,4 +17,13 @@ public class Category {
 
     @Column(unique = true, nullable = false)
     private String name;
+
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public Category(String name) {
+        this.name = name;
+    }
+
+    public Category() {
+
+    }
 }

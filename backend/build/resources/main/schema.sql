@@ -1,3 +1,4 @@
+CREATE SCHEMA IF NOT EXISTS public;
 CREATE TABLE IF NOT EXISTS users (
     uid           VARCHAR(28) PRIMARY KEY,
     email         VARCHAR(255) UNIQUE NOT NULL,
@@ -13,7 +14,8 @@ CREATE TABLE IF NOT EXISTS ideas (
                                      short_description  VARCHAR(255),
                                      solution TEXT,
                                      problem_description TEXT,
-                                     technical_details TEXT
+                                     technical_details TEXT,
+                                     rating INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS comments (
@@ -103,11 +105,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION add_tags_to_idea(
+CREATE OR REPLACE PROCEDURE add_tags_to_idea(
     p_idea_id BIGINT,
     p_tags    TEXT[]
 )
-    RETURNS VOID
 AS $$
 BEGIN
     INSERT INTO idea_categories (idea_id, category_id)
@@ -116,7 +117,6 @@ BEGIN
     ON CONFLICT DO NOTHING;
 END;
 $$ LANGUAGE plpgsql;
-
 
 CREATE OR REPLACE FUNCTION get_or_create_technology(p_alias TEXT)
     RETURNS INT
