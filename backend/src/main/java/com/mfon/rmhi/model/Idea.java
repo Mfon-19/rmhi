@@ -1,5 +1,7 @@
 package com.mfon.rmhi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -33,26 +35,31 @@ public class Idea {
     @JoinTable(name = "idea_categories",
             joinColumns        = @JoinColumn(name = "idea_id"),
             inverseJoinColumns = @JoinColumn(name = "category_id"))
+    @JsonManagedReference
     private Set<Category> categories = new HashSet<>();
 
+    @JsonProperty("short_description")
     @Column(columnDefinition = "TEXT", name = "short_description")
     private String shortDescription;
 
     @Column(columnDefinition = "TEXT")
     private String solution;
 
+    @JsonProperty("problem_description")
     @Column(columnDefinition = "TEXT", name = "problem_description")
     private String problemDescription;
 
+    @JsonProperty("technical_details")
     @Column(columnDefinition = "TEXT", name = "technical_details")
     private String technicalDetails;
 
     @ManyToMany
     @JoinTable(
-            name = "scraped_idea_technologies",
+            name = "idea_technologies",
             joinColumns = @JoinColumn(name = "idea_id"),
             inverseJoinColumns = @JoinColumn(name = "technology_id")
     )
+    @JsonManagedReference
     private Set<Technology> technologies = new HashSet<>();
 
     private Integer rating;

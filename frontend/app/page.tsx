@@ -11,11 +11,9 @@ import { importScrapedIdeas } from "./utils/actions";
 export default function Home() {
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
   const handlePostIdea = () => {
     setIsPostModalOpen(true);
   };
-
   const handleCloseModal = () => {
     setIsPostModalOpen(false);
   };

@@ -48,7 +48,6 @@ async function getToken() {
 export async function createIdea(idea: Idea) {
   const token = await getToken();
   try {
-    console.log("sending....");
     const response = await fetch(`${API_URL}/create-idea`, {
       method: "POST",
       headers: {
@@ -68,6 +67,27 @@ export async function createIdea(idea: Idea) {
   }
 }
 
+export async function getIdeas() {
+  const token = await getToken();
+  try {
+    const response = await fetch(`${API_URL}/get-ideas`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.status !== 200) {
+      throw new Error("Failed to get ideas");
+    }
+    const result = await response.json();
+    console.log(JSON.stringify(result, null, 2))
+    return result;
+  } catch (error) {
+    console.error("Failed to get ideas");
+  }
+}
+
 export async function importScrapedIdeas() {
   try {
     const ideasPath = path.resolve(process.cwd(), "ideas.json");
@@ -82,7 +102,7 @@ export async function importScrapedIdeas() {
       likes: item.likes ?? 0,
       categories: item.categories ?? [],
       rating: item.rating ?? [],
-      created_by: item.created_by,
+      created_by: "anonymous",
       technologies: item.technologies ?? [],
       short_description: item.short_description,
       solution: item.solution,
@@ -100,10 +120,10 @@ export async function importScrapedIdeas() {
       try {
         await createIdea(idea);
         success += 1;
-        console.log(`✓ Imported: ${idea.project_name}`);
+        console.log(`✓ Imported: ${idea.projectName}`);
       } catch (err) {
         failed += 1;
-        const errorMsg = `Failed to import "${idea.project_name}": ${err}`;
+        const errorMsg = `Failed to import "${idea.projectName}": ${err}`;
         console.error(`✗ ${errorMsg}`);
         errors.push(errorMsg);
       }

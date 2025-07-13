@@ -1,5 +1,6 @@
 package com.mfon.rmhi.controller;
 
+import com.mfon.rmhi.dto.IdeaResponseDTO;
 import com.mfon.rmhi.model.Idea;
 import com.mfon.rmhi.repository.UserRepository;
 import com.mfon.rmhi.service.UserService;
@@ -7,12 +8,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -47,6 +46,11 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(Map.of("id", id));
+    }
+
+    @GetMapping("/get-ideas")
+    public ResponseEntity<List<IdeaResponseDTO>> getIdeas(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.status(HttpStatus.OK).body(userService.getIdeas());
     }
 
 //    @PostMapping("/create-ideas")

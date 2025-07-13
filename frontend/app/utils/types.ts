@@ -1,12 +1,31 @@
 export interface Idea {
-  project_name: string;
+  id?: number;
+  projectName: string;
   likes: number;
-  created_by: string;
+  createdBy: string;
   technologies: string[];
-  categories: string[];
+  categories: Category[];
   rating: number;
-  short_description?: string;
+  shortDescription?: string;
   solution?: string;
-  problem_description?: string;
-  technical_details?: string;
+  comments?: Comment[];
+  problemDescription?: string;
+  technicalDetails?: string;
+}
+
+export interface Comment {
+  id: number;
+  content: string;
+  ideaId: number;
+  userId: number;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+}
+
+export interface Technology {
+  id: number;
+  name: string;
 }

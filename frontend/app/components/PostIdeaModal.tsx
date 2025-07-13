@@ -3,7 +3,7 @@
 import { useState } from "react";
 import CategoryChip, { getCategoryVariant } from "./CategoryChip";
 import { createIdea } from "../utils/actions";
-import { Idea, Category } from "../utils/types";
+import { Idea } from "../utils/types";
 import { auth } from "../utils/firebase";
 import { toast } from "sonner";
 
@@ -34,7 +34,7 @@ const SUGGESTED_CATEGORIES = [
   "Entertainment",
 ];
 
-const DISPLAY_NAME_TO_CATEGORY: Record<string, Category> = {
+const DISPLAY_NAME_TO_CATEGORY: Record<string, string> = {
   MobileApp: "MOBILE_APP",
   AI: "AI",
   FinTech: "FIN_TECH",

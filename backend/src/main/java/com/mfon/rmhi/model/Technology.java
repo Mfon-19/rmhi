@@ -1,6 +1,9 @@
 package com.mfon.rmhi.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,9 +25,12 @@ public class Technology {
     private String name;
 
     @ManyToMany(mappedBy = "technologies")
+    @JsonBackReference
+    @JsonIgnore
     private Set<Idea> ideas = new HashSet<>();
 
     @OneToMany(mappedBy = "technology", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Set<TechnologyAlias> aliases = new HashSet<>();
 
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)

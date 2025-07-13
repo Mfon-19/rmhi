@@ -2,33 +2,13 @@
 
 import { useState } from "react";
 import CategoryChip, { getCategoryVariant } from "./CategoryChip";
-
-export interface IdeaData {
-  id: string;
-  title: string;
-  body: string;
-  author: {
-    name: string;
-    avatar: string;
-    role?: string;
-    company?: string;
-    profileUrl?: string;
-  };
-  timestamp: string;
-  categories: string[];
-  stats: {
-    likes: number;
-    comments: number;
-    views: number;
-  };
-  isLiked?: boolean;
-}
+import { Idea } from "../utils/types";
 
 interface IdeaCardProps {
-  idea: IdeaData;
-  onLike?: (id: string) => void;
-  onComment?: (id: string) => void;
-  onShare?: (id: string) => void;
+  idea: Idea & { isLiked?: boolean };
+  onLike?: (id: number) => void;
+  onComment?: (id: number) => void;
+  onShare?: (id: number) => void;
   onCategoryClick?: (category: string) => void;
 }
 
@@ -42,11 +22,25 @@ export default function IdeaCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  const shouldTruncate = idea.body.length > 180;
+  const buildBody = (idea: IdeaCardProps["idea"]): string => {
+    let body = idea.shortDescription || "";
+    if (idea.problemDescription) {
+      body += `\n\n**Problem:** ${idea.problemDescription}`;
+    }
+    if (idea.solution) {
+      body += `\n\n**Solution:** ${idea.solution}`;
+    }
+    if (idea.technicalDetails) {
+      body += `\n\n**Technical Details:** ${idea.technicalDetails}`;
+    }
+    return body;
+  };
+
+  const rawBody = buildBody(idea);
+
+  const shouldTruncate = rawBody.length > 180;
   const displayBody =
-    shouldTruncate && !isExpanded
-      ? idea.body.substring(0, 180) + "..."
-      : idea.body;
+    shouldTruncate && !isExpanded ? rawBody.substring(0, 180) + "..." : rawBody;
 
   const handleLike = () => {
     onLike?.(idea.id);
@@ -74,57 +68,21 @@ export default function IdeaCard({
       {/* Header */}
       <div className="flex items-center justify-between p-4 pb-3">
         <div className="flex items-center space-x-3">
-          <img
-            src={idea.author.avatar}
-            alt={idea.author.name}
-            className="w-10 h-10 rounded-full object-cover"
-          />
-          <div className="flex items-center space-x-2">
-            {idea.author.profileUrl ? (
-              <a
-                href={idea.author.profileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer">
-                {idea.author.name}
-              </a>
-            ) : (
-              <span className="font-semibold text-foreground">
-                {idea.author.name}
-              </span>
-            )}
-            {idea.author.role && (
-              <span className="text-xs text-secondary">
-                {idea.author.company
-                  ? `${idea.author.role} at ${idea.author.company}`
-                  : idea.author.role}
-              </span>
-            )}
-            <span className="text-secondary">·</span>
-            <span className="text-sm text-secondary">{idea.timestamp}</span>
+          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-bold text-gray-600">
+            {idea.createdBy.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <span className="font-semibold text-foreground">
+              {idea.createdBy}
+            </span>
           </div>
         </div>
-
-        <button className="p-1 text-secondary hover:text-foreground transition-colors">
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-            />
-          </svg>
-        </button>
       </div>
 
       {/* Title */}
       <div className="px-4 pb-2">
         <h4 className="text-lg font-medium text-foreground line-clamp-1">
-          {idea.title}
+          {idea.projectName}
         </h4>
       </div>
 
@@ -149,18 +107,45 @@ export default function IdeaCard({
         </div>
       </div>
 
-      {/* Tags */}
-      {idea.categories.length > 0 && (
+      {/* Category Tags */}
+      {idea.categories && idea.categories.length > 0 && (
         <div className="px-4 pb-3">
           <div className="flex flex-wrap gap-2">
-            {idea.categories.map((category, index) => (
-              <CategoryChip
-                key={index}
-                label={category}
-                variant={getCategoryVariant(category)}
-                onClick={() => onCategoryClick?.(category)}
-              />
-            ))}
+            {idea.categories.map((category) => {
+              // Support both string[] and Category[] shapes
+              const label =
+                typeof category === "string" ? category : category.name;
+              const key =
+                typeof category === "string" ? label : category.id ?? label;
+
+              return (
+                <CategoryChip
+                  key={key}
+                  label={label}
+                  variant={getCategoryVariant(label)}
+                  onClick={() => onCategoryClick?.(label)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Technology Tags */}
+      {idea.technologies && idea.technologies.length > 0 && (
+        <div className="px-4 pb-3">
+          <div className="flex flex-wrap gap-2">
+            {idea.technologies.map((tech, idx) => {
+              const label = typeof tech === "string" ? tech : tech.name;
+              return (
+                <CategoryChip
+                  key={idx}
+                  label={label}
+                  variant={getCategoryVariant(label)}
+                  onClick={() => console.log("Filter by technology:", label)}
+                />
+              );
+            })}
           </div>
         </div>
       )}
@@ -173,16 +158,15 @@ export default function IdeaCard({
         <div className="flex items-center space-x-6">
           <ActionButton
             icon={<HeartIcon filled={idea.isLiked} />}
-            count={idea.stats.likes}
+            count={idea.likes}
             isActive={idea.isLiked}
             onClick={handleLike}
           />
           <ActionButton
             icon={<CommentIcon />}
-            count={idea.stats.comments}
+            count={idea.comments?.length}
             onClick={handleComment}
           />
-          <ActionButton icon={<EyeIcon />} count={idea.stats.views} />
         </div>
 
         <ActionButton icon={<ShareIcon />} onClick={handleShare} />
@@ -204,11 +188,14 @@ function FormattedText({ text }: { text: string }) {
         // Check if paragraph starts with **Problem:** or **Solution:**
         const isProblemSection = trimmedParagraph.startsWith("**Problem:**");
         const isSolutionSection = trimmedParagraph.startsWith("**Solution:**");
+        const isTechnicalSection = trimmedParagraph.startsWith(
+          "**Technical Details:**"
+        );
 
-        if (isProblemSection || isSolutionSection) {
+        if (isProblemSection || isSolutionSection || isTechnicalSection) {
           // Extract the header and content
           const headerMatch = trimmedParagraph.match(
-            /^\*\*(Problem|Solution):\*\*\s*([\s\S]*)/
+            /^\*\*(Problem|Solution|Technical Details):\*\*\s*([\s\S]*)/
           );
           if (headerMatch) {
             const [, headerType, content] = headerMatch;

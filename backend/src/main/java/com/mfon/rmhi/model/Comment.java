@@ -1,13 +1,17 @@
 package com.mfon.rmhi.model;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import jakarta.persistence.*;
+import lombok.Setter;
 
 @Entity
 @Table(name = "comments")
 @AllArgsConstructor
 @NoArgsConstructor
+@Getter
+@Setter
 public class Comment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

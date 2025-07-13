@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import IdeaCard, { IdeaData } from "./IdeaCard";
-import {
-  getHackathonIdeas,
-  getWinningIdeas,
-  getRandomIdeas,
-} from "../utils/hackathonData";
+import IdeaCard from "./IdeaCard";
+import { Idea, Category, Technology } from "../utils/types";
+import { getIdeas } from "../utils/actions";
 
 interface MainFeedProps {
   onPostIdea: () => void;
@@ -14,45 +11,72 @@ interface MainFeedProps {
 
 type SortOption = "popular" | "recent" | "trending" | "most-liked";
 
+type IdeaWithLike = Omit<Idea, "categories" | "technologies"> & {
+  categories: Category[] | string[];
+  technologies: Technology[] | string[];
+  isLiked?: boolean;
+};
+
 export default function MainFeed({ onPostIdea }: MainFeedProps) {
-  const [ideas, setIdeas] = useState<IdeaData[]>([]);
+  const [ideas, setIdeas] = useState<IdeaWithLike[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("popular");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setIdeas(getHackathonIdeas(12));
-      setLoading(false);
-    }, 1000);
+    async function fetchIdeas() {
+      try {
+        const fetched: Idea[] = await getIdeas();
+
+        // Ensure categories/technologies are using the new object shapes
+        const normalized: IdeaWithLike[] = fetched.map((idea) => {
+          // Guard against arrays of primitive strings coming from the API
+          const normalizedCategories = idea.categories.map((cat, idx) =>
+            typeof cat === "string" ? { id: idx, name: cat } : cat
+          );
+
+          const normalizedTechnologies = idea.technologies?.map((tech, idx) =>
+            typeof tech === "string" ? { id: idx, name: tech } : tech
+          );
+
+          return {
+            ...idea,
+            categories: normalizedCategories as Category[] | string[],
+            technologies: normalizedTechnologies as Technology[] | string[],
+            isLiked: false,
+          } as IdeaWithLike;
+        });
+
+        setIdeas(normalized);
+      } catch (err) {
+        console.error("Failed to fetch ideas", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchIdeas();
   }, []);
 
-  const handleLike = (ideaId: string) => {
+  const handleLike = (id: number) => {
     setIdeas((prevIdeas) =>
       prevIdeas.map((idea) =>
-        idea.id === ideaId
+        idea.id === id
           ? {
               ...idea,
               isLiked: !idea.isLiked,
-              stats: {
-                ...idea.stats,
-                likes: idea.isLiked
-                  ? idea.stats.likes - 1
-                  : idea.stats.likes + 1,
-              },
+              likes: idea.isLiked ? idea.likes - 1 : idea.likes + 1,
             }
           : idea
       )
     );
   };
 
-  const handleComment = (ideaId: string) => {
-    console.log("Comment on idea:", ideaId);
+  const handleComment = (id: number) => {
+    console.log("Comment on idea:", id);
     // In a real app, this would open a comment modal or navigate to the idea detail page
   };
 
-  const handleShare = (ideaId: string) => {
-    console.log("Share idea:", ideaId);
+  const handleShare = (id: number) => {
+    console.log("Share idea:", id);
   };
 
   const handleCategoryClick = (category: string) => {
@@ -63,26 +87,11 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
   const sortedIdeas = [...ideas].sort((a, b) => {
     switch (sortBy) {
       case "popular":
-        return b.stats.likes - a.stats.likes;
-      case "recent":
-        // Sort winners first, then by likes
-        if (
-          a.author.role?.includes("Winner") &&
-          !b.author.role?.includes("Winner")
-        )
-          return -1;
-        if (
-          !a.author.role?.includes("Winner") &&
-          b.author.role?.includes("Winner")
-        )
-          return 1;
-        return b.stats.likes - a.stats.likes;
-      case "trending":
-        return (
-          b.stats.likes + b.stats.comments - (a.stats.likes + a.stats.comments)
-        );
       case "most-liked":
-        return b.stats.likes - a.stats.likes;
+      case "trending":
+        return b.likes - a.likes;
+      case "recent":
+        return b.likes - a.likes;
       default:
         return 0;
     }
@@ -129,12 +138,16 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
         ))}
       </div>
 
-      {/* Load More Button */}
+      {/* Load More Button (placeholder – fetches again) */}
       <div className="flex justify-center mt-8">
         <button
-          onClick={() => {
-            const newIdeas = getRandomIdeas(6);
-            setIdeas((prev) => [...prev, ...newIdeas]);
+          onClick={async () => {
+            try {
+              const more: Idea[] = await getIdeas();
+              setIdeas((prev) => [...prev, ...more]);
+            } catch (err) {
+              console.error("Failed to load more ideas", err);
+            }
           }}
           className="px-6 py-3 border border-border rounded-lg hover:bg-gray-50 transition-colors text-secondary hover:text-foreground">
           Load more ideas
