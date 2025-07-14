@@ -11,13 +11,11 @@ export default function TopNavigation() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-[72px] bg-white border-b border-border shadow-sm">
       <div className="flex items-center justify-between h-full px-4 max-w-7xl mx-auto">
-        {/* Logo */}
         <div className="flex items-center space-x-2">
           <span className="text-2xl">🏆</span>
           <span className="font-semibold text-lg text-foreground">Eureka</span>
         </div>
 
-        {/* Desktop Search Bar */}
         <div className="hidden md:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">
             <input
@@ -40,7 +38,6 @@ export default function TopNavigation() {
           </div>
         </div>
 
-        {/* Desktop Navigation Links */}
         <div className="hidden lg:flex items-center space-x-6">
           <DropdownButton label="Hackathons" />
           <DropdownButton label="Technologies" />
@@ -81,7 +78,6 @@ export default function TopNavigation() {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
         <div className="lg:hidden flex items-center space-x-2">
           <button className="p-2 bg-primary text-white rounded-full">
             <svg
@@ -120,7 +116,6 @@ export default function TopNavigation() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="lg:hidden bg-white border-t border-border shadow-lg">
           <div className="px-4 py-2">
@@ -135,7 +130,6 @@ export default function TopNavigation() {
             <MobileNavItem label="Technologies" />
             <div className="pt-2 border-t border-border">
               {isLoggedIn ? (
-                /* User profile section when logged in */
                 <div className="flex items-center space-x-3 py-2">
                   <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                     <svg
@@ -154,7 +148,6 @@ export default function TopNavigation() {
                   <span className="text-foreground">Profile</span>
                 </div>
               ) : (
-                /* Sign in/Sign up buttons when not logged in */
                 <>
                   <button className="text-secondary hover:text-foreground block w-full text-left py-2">
                     Sign in

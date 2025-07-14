@@ -81,7 +81,7 @@ export async function getIdeas() {
       throw new Error("Failed to get ideas");
     }
     const result = await response.json();
-    console.log(JSON.stringify(result, null, 2))
+    console.log(JSON.stringify(result, null, 2));
     return result;
   } catch (error) {
     console.error("Failed to get ideas");
@@ -98,16 +98,16 @@ export async function importScrapedIdeas() {
     const ideasData = raw.ideas;
 
     const ideas: Idea[] = ideasData.map((item) => ({
-      project_name: item.project_name,
+      projectName: item.project_name,
       likes: item.likes ?? 0,
       categories: item.categories ?? [],
-      rating: item.rating ?? [],
-      created_by: "anonymous",
+      rating: item.rating ?? 0,
+      createdBy: "anonymous",
       technologies: item.technologies ?? [],
-      short_description: item.short_description,
+      shortDescription: item.short_description,
       solution: item.solution,
-      problem_description: item.problem_description,
-      technical_details: item.technical_details,
+      problemDescription: item.problem_description,
+      technicalDetails: item.technical_details,
     }));
 
     console.log(`Starting import of ${ideas.length} scraped ideas`);

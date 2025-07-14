@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import CategoryChip, { getCategoryVariant } from "./CategoryChip";
-import { Idea } from "../utils/types";
+import { Idea, Category, Technology } from "../utils/types";
+
+type IdeaCardData = Omit<Idea, "categories" | "technologies"> & {
+  categories: Category[] | string[];
+  technologies: Technology[] | string[];
+  isLiked?: boolean;
+};
 
 interface IdeaCardProps {
-  idea: Idea & { isLiked?: boolean };
+  idea: IdeaCardData;
   onLike?: (id: number) => void;
   onComment?: (id: number) => void;
   onShare?: (id: number) => void;
@@ -43,18 +49,18 @@ export default function IdeaCard({
     shouldTruncate && !isExpanded ? rawBody.substring(0, 180) + "..." : rawBody;
 
   const handleLike = () => {
-    onLike?.(idea.id);
+    onLike?.(idea.id!);
     console.log("Liked idea:", idea.id);
   };
 
   const handleComment = () => {
-    onComment?.(idea.id);
+    onComment?.(idea.id!);
     console.log("Comment on idea:", idea.id);
   };
 
   const handleShare = () => {
-    onShare?.(idea.id);
-    navigator.clipboard.writeText(`${window.location.origin}/idea/${idea.id}`);
+    onShare?.(idea.id!);
+    navigator.clipboard.writeText(`${window.location.origin}/idea/${idea.id!}`);
     console.log("Shared idea:", idea.id);
   };
 
@@ -112,7 +118,6 @@ export default function IdeaCard({
         <div className="px-4 pb-3">
           <div className="flex flex-wrap gap-2">
             {idea.categories.map((category) => {
-              // Support both string[] and Category[] shapes
               const label =
                 typeof category === "string" ? category : category.name;
               const key =
@@ -177,7 +182,6 @@ export default function IdeaCard({
 
 function FormattedText({ text }: { text: string }) {
   const formatText = (input: string) => {
-    // Split by double newlines first to handle paragraphs
     const paragraphs = input.split("\n\n");
 
     return paragraphs
@@ -185,7 +189,6 @@ function FormattedText({ text }: { text: string }) {
         const trimmedParagraph = paragraph.trim();
         if (!trimmedParagraph) return null;
 
-        // Check if paragraph starts with **Problem:** or **Solution:**
         const isProblemSection = trimmedParagraph.startsWith("**Problem:**");
         const isSolutionSection = trimmedParagraph.startsWith("**Solution:**");
         const isTechnicalSection = trimmedParagraph.startsWith(
@@ -193,7 +196,6 @@ function FormattedText({ text }: { text: string }) {
         );
 
         if (isProblemSection || isSolutionSection || isTechnicalSection) {
-          // Extract the header and content
           const headerMatch = trimmedParagraph.match(
             /^\*\*(Problem|Solution|Technical Details):\*\*\s*([\s\S]*)/
           );
@@ -212,7 +214,6 @@ function FormattedText({ text }: { text: string }) {
           }
         }
 
-        // Regular paragraph
         return (
           <div key={paragraphIndex} className="mb-4 first:mb-2">
             <FormattedParagraph text={trimmedParagraph} />
@@ -226,14 +227,12 @@ function FormattedText({ text }: { text: string }) {
 }
 
 function FormattedParagraph({ text }: { text: string }) {
-  // Process **bold** text within a paragraph
   const parts = text.split(/(\*\*[^*]+\*\*)/);
 
   return (
     <p className="leading-relaxed">
       {parts.map((part, partIndex) => {
         if (part.startsWith("**") && part.endsWith("**")) {
-          // Remove ** and make bold
           const boldText = part.slice(2, -2);
           return (
             <strong key={partIndex} className="font-semibold text-foreground">
@@ -274,7 +273,6 @@ function ActionButton({
   );
 }
 
-// Icon Components
 function HeartIcon({ filled = false }: { filled?: boolean }) {
   return (
     <svg
@@ -349,7 +347,6 @@ function ShareIcon() {
   );
 }
 
-// Utility function to format numbers
 function formatCount(count: number): string {
   if (count >= 1000000) {
     return `${(count / 1000000).toFixed(1)}M`;

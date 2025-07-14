@@ -60,40 +60,6 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!auth.currentUser) {
-      console.error("User not authenticated");
-      toast.error("Please sign in to post an idea");
-      return;
-    }
-
-    console.log("User ID:", auth.currentUser.uid); 
-    console.log("Form data:", formData); 
-
-    const idea: Idea = {
-      title: formData.title,
-      description: formData.description,
-      categories: formData.categories.map(
-        (cat) =>
-          DISPLAY_NAME_TO_CATEGORY[cat] ||
-          (cat.toUpperCase().replace(/[^A-Z0-9]/g, "_") as Category)
-      ),
-      userId: auth.currentUser.uid,
-    };
-
-    try {
-      await createIdea(idea);
-      console.log("Idea created successfully:", idea);
-      toast.success("Idea posted successfully!");
-      handleClose();
-    } catch (error) {
-      console.error("Failed to create idea:", error);
-      toast.error("Failed to create idea");
-    }
-  };
-
   const handleClose = () => {
     setFormData({ title: "", categories: [], description: "" });
     setCustomCategory("");
@@ -170,8 +136,7 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Title */}
+        <form onSubmit={() => {}} className="p-6 space-y-6">
           <div>
             <label
               htmlFor="title"
@@ -191,13 +156,11 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
             />
           </div>
 
-          {/* Categories */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
               Categories
             </label>
 
-            {/* Selected Categories */}
             {formData.categories.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {formData.categories.map((category) => (
@@ -218,7 +181,6 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
               </div>
             )}
 
-            {/* Suggested Categories */}
             <div className="mb-3">
               <p className="text-xs text-secondary mb-2">
                 Suggested categories:
@@ -238,7 +200,6 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
               </div>
             </div>
 
-            {/* Custom Category Input */}
             <div className="flex gap-2">
               <input
                 type="text"
@@ -260,7 +221,6 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <label
               htmlFor="description"
@@ -284,7 +244,6 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
             <p className="text-xs text-secondary mt-1">Markdown supported</p>
           </div>
 
-          {/* Image Upload */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
               Attach image (optional)
@@ -350,7 +309,6 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
             )}
           </div>
 
-          {/* Footer */}
           <div className="flex justify-end space-x-3 pt-4 border-t border-border">
             <button
               type="button"

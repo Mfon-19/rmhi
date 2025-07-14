@@ -17,7 +17,6 @@ export default function LeftSidebar({ isOpen = true }: { isOpen?: boolean }) {
   return (
     <aside className="fixed left-0 top-[72px] w-60 h-[calc(100vh-72px)] bg-white border-r border-border overflow-y-auto z-40">
       <div className="p-4">
-        {/* GENERAL Section */}
         <div className="mb-6">
           <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">
             GENERAL
@@ -29,7 +28,6 @@ export default function LeftSidebar({ isOpen = true }: { isOpen?: boolean }) {
           </div>
         </div>
 
-        {/* HACKATHON IDEAS Section */}
         <div className="mb-6">
           <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">
             HACKATHON IDEAS
@@ -41,7 +39,6 @@ export default function LeftSidebar({ isOpen = true }: { isOpen?: boolean }) {
           </div>
         </div>
 
-        {/* DISCOVER Section */}
         <div className="mb-6">
           <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">
             DISCOVER
@@ -85,7 +82,6 @@ export default function LeftSidebar({ isOpen = true }: { isOpen?: boolean }) {
           </div>
         </div>
 
-        {/* Quick Stats */}
         <div className="mt-8 p-3 bg-gray-50 rounded-lg">
           <h4 className="text-sm font-medium text-foreground mb-2">
             Hackathon Stats
@@ -132,7 +128,6 @@ function SidebarItem({
   );
 }
 
-// Icon Components
 function HomeIcon() {
   return (
     <svg

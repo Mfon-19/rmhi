@@ -51,7 +51,6 @@ export default function CategoryChip({
   );
 }
 
-// Helper function to get category variant based on category name
 export function getCategoryVariant(
   category: string
 ): CategoryChipProps["variant"] {

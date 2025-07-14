@@ -27,9 +27,7 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
       try {
         const fetched: Idea[] = await getIdeas();
 
-        // Ensure categories/technologies are using the new object shapes
         const normalized: IdeaWithLike[] = fetched.map((idea) => {
-          // Guard against arrays of primitive strings coming from the API
           const normalizedCategories = idea.categories.map((cat, idx) =>
             typeof cat === "string" ? { id: idx, name: cat } : cat
           );
@@ -72,7 +70,6 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
 
   const handleComment = (id: number) => {
     console.log("Comment on idea:", id);
-    // In a real app, this would open a comment modal or navigate to the idea detail page
   };
 
   const handleShare = (id: number) => {
@@ -81,7 +78,6 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
 
   const handleCategoryClick = (category: string) => {
     console.log("Filter by category:", category);
-    // In a real app, this would filter the feed by category
   };
 
   const sortedIdeas = [...ideas].sort((a, b) => {
@@ -109,10 +105,9 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
     );
   }
 
-  return (
-    <main className="flex-1 max-w-2xl mx-auto px-4 py-6">
-      {/* Feed Header */}
-      <div className="flex items-center justify-between mb-6">
+      return (
+      <main className="flex-1 max-w-2xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
           <h1 className="text-xl font-semibold text-foreground">Feed</h1>
           <SortDropdown value={sortBy} onChange={setSortBy} />
@@ -122,10 +117,9 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
           className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium">
           Post Idea
         </button>
-      </div>
+              </div>
 
-      {/* Ideas List */}
-      <div className="space-y-6">
+        <div className="space-y-6">
         {sortedIdeas.map((idea) => (
           <IdeaCard
             key={idea.id}
@@ -136,10 +130,9 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
             onCategoryClick={handleCategoryClick}
           />
         ))}
-      </div>
+              </div>
 
-      {/* Load More Button (placeholder – fetches again) */}
-      <div className="flex justify-center mt-8">
+        <div className="flex justify-center mt-8">
         <button
           onClick={async () => {
             try {

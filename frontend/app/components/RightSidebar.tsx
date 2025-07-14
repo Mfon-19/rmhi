@@ -1,4 +1,16 @@
 export default function RightSidebar() {
+  const categories: ReadonlyArray<{
+    name: string;
+    count: number;
+    trend: "up" | "down" | "stable";
+  }> = [
+    { name: "AI & ML", count: 234, trend: "up" },
+    { name: "FinTech", count: 189, trend: "up" },
+    { name: "Health Tech", count: 156, trend: "down" },
+    { name: "Gaming", count: 142, trend: "up" },
+    { name: "E-commerce", count: 128, trend: "stable" },
+  ] as const;
+
   return (
     <aside className="hidden xl:block fixed right-0 top-[72px] w-70 h-[calc(100vh-72px)] bg-white border-l border-border overflow-y-auto">
       <div className="p-4 space-y-6">
@@ -6,13 +18,7 @@ export default function RightSidebar() {
         <div className="bg-white rounded-lg border border-border p-4">
           <h3 className="font-semibold text-foreground mb-3">Top Categories</h3>
           <div className="space-y-2">
-            {[
-              { name: "AI & ML", count: 234, trend: "up" },
-              { name: "FinTech", count: 189, trend: "up" },
-              { name: "Health Tech", count: 156, trend: "down" },
-              { name: "Gaming", count: 142, trend: "up" },
-              { name: "E-commerce", count: 128, trend: "stable" },
-            ].map((category, index) => (
+            {categories.map((category, index) => (
               <div
                 key={index}
                 className="flex items-center justify-between py-1">
