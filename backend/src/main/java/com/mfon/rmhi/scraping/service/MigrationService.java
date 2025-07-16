@@ -3,27 +3,50 @@ package com.mfon.rmhi.scraping.service;
 import com.mfon.rmhi.scraping.dto.MigrationResult;
 import com.mfon.rmhi.scraping.dto.MigrationStatus;
 
+import java.util.List;
+
 /**
- * Interface for migrating approved ideas from staging to production
+ * Service interface for migrating approved staged ideas to production database
  */
 public interface MigrationService {
     
     /**
-     * Migrates all approved ideas from staging to production database
-     * @return Result containing migration statistics and status
+     * Migrate all approved staged ideas to production database
+     * @return MigrationResult containing migration statistics and status
      */
     MigrationResult migrateApprovedIdeas();
     
     /**
-     * Rolls back a specific migration if issues are detected
-     * @param migrationId The ID of the migration to rollback
+     * Migrate approved staged ideas in batches
+     * @param batchSize number of ideas to migrate in each batch
+     * @return MigrationResult containing migration statistics and status
      */
-    void rollbackMigration(String migrationId);
+    MigrationResult migrateApprovedIdeas(int batchSize);
     
     /**
-     * Gets the status of a specific migration
-     * @param migrationId The ID of the migration to check
-     * @return Current status of the migration
+     * Migrate specific staged ideas by their IDs
+     * @param stagedIdeaIds list of staged idea IDs to migrate
+     * @return MigrationResult containing migration statistics and status
+     */
+    MigrationResult migrateSpecificIdeas(List<Long> stagedIdeaIds);
+    
+    /**
+     * Rollback a migration by migration ID
+     * @param migrationId the ID of the migration to rollback
+     * @return true if rollback was successful, false otherwise
+     */
+    boolean rollbackMigration(String migrationId);
+    
+    /**
+     * Get the status of a migration by migration ID
+     * @param migrationId the ID of the migration
+     * @return MigrationStatus of the specified migration
      */
     MigrationStatus getMigrationStatus(String migrationId);
+    
+    /**
+     * Get all migration results for audit purposes
+     * @return list of all migration results
+     */
+    List<MigrationResult> getAllMigrationResults();
 }

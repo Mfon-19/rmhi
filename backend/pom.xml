@@ -89,6 +89,12 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- H2 Database for testing -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<!-- MockWebServer for HTTP mocking in tests -->
 		<dependency>
 			<groupId>com.squareup.okhttp3</groupId>

@@ -51,5 +51,7 @@ build
 /scraper/node_modules
 /scraper/outscraper/
 /scraper/*
-/backend/.ideas
-/backend/targetbackend/target/
+/backend/.idea
+./backend/target
+/ts-test/
+.kiro/

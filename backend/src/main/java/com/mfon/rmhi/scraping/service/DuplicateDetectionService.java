@@ -121,6 +121,22 @@ public class DuplicateDetectionService {
     }
     
     /**
+     * Calculates similarity between two text strings
+     * @param text1 First text string
+     * @param text2 Second text string
+     * @return Similarity score between 0.0 and 1.0
+     */
+    public double calculateSimilarity(String text1, String text2) {
+        String normalizedText1 = normalizeText(text1);
+        String normalizedText2 = normalizeText(text2);
+        
+        Set<String> words1 = new HashSet<>(List.of(normalizedText1.split("\\s+")));
+        Set<String> words2 = new HashSet<>(List.of(normalizedText2.split("\\s+")));
+        
+        return calculateJaccardSimilarity(words1, words2);
+    }
+    
+    /**
      * Normalizes text for similarity comparison
      */
     private String normalizeText(String text) {

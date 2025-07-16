@@ -1,9 +1,0 @@
-/Users/mfonudoh/Desktop/Programs/eureka/backend/src/test/java/com/mfon/rmhi/RmhiApplicationTests.java
-/Users/mfonudoh/Desktop/Programs/eureka/backend/src/test/java/com/mfon/rmhi/scraping/controller/ScrapingConfigurationControllerTest.java
-/Users/mfonudoh/Desktop/Programs/eureka/backend/src/test/java/com/mfon/rmhi/scraping/repository/StagedIdeaRepositoryTest.java
-/Users/mfonudoh/Desktop/Programs/eureka/backend/src/test/java/com/mfon/rmhi/scraping/service/AbstractWebsiteScraperTest.java
-/Users/mfonudoh/Desktop/Programs/eureka/backend/src/test/java/com/mfon/rmhi/scraping/service/DevPostScraperTest.java
-/Users/mfonudoh/Desktop/Programs/eureka/backend/src/test/java/com/mfon/rmhi/scraping/service/DuplicateDetectionServiceTest.java
-/Users/mfonudoh/Desktop/Programs/eureka/backend/src/test/java/com/mfon/rmhi/scraping/service/GeminiTransformationServiceTest.java
-/Users/mfonudoh/Desktop/Programs/eureka/backend/src/test/java/com/mfon/rmhi/scraping/service/ScrapingConfigurationServiceTest.java
-/Users/mfonudoh/Desktop/Programs/eureka/backend/src/test/java/com/mfon/rmhi/scraping/service/ScrapingOrchestratorTest.java
