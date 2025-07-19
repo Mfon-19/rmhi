@@ -71,7 +71,7 @@ public interface ScrapingExecutionRepository extends JpaRepository<ScrapingExecu
     List<ScrapingExecution> findExecutionsWithErrors();
 
     // Get average execution duration for completed executions
-    @Query("SELECT AVG(EXTRACT(EPOCH FROM (e.completedAt - e.startedAt))) FROM ScrapingExecution e WHERE e.status = 'COMPLETED' AND e.completedAt IS NOT NULL")
+    @Query(value = "SELECT AVG(EXTRACT(EPOCH FROM (e.completed_at - e.started_at))) FROM scraping_executions e WHERE e.status = 'COMPLETED' AND e.completed_at IS NOT NULL", nativeQuery = true)
     Double getAverageExecutionDurationSeconds();
 
     // Find long-running executions (running for more than specified hours)
@@ -79,7 +79,7 @@ public interface ScrapingExecutionRepository extends JpaRepository<ScrapingExecu
     List<ScrapingExecution> findLongRunningExecutions(@Param("cutoffTime") LocalDateTime cutoffTime);
 
     // Get daily execution summary
-    @Query("SELECT DATE(e.startedAt), e.status, COUNT(e) FROM ScrapingExecution e WHERE e.startedAt >= :since GROUP BY DATE(e.startedAt), e.status ORDER BY DATE(e.startedAt) DESC")
+    @Query(value = "SELECT CAST(e.started_at AS DATE), e.status, COUNT(e) FROM scraping_executions e WHERE e.started_at >= :since GROUP BY CAST(e.started_at AS DATE), e.status ORDER BY CAST(e.started_at AS DATE) DESC", nativeQuery = true)
     List<Object[]> getDailyExecutionSummary(@Param("since") LocalDateTime since);
 
     // Find executions by status and started after a certain time

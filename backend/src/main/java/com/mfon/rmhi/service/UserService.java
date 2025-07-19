@@ -62,10 +62,10 @@ public class UserService {
 
         ideaTechnologyRepository.addTechnologiesToIdea(
                 idea.getId(),
-                tags.toArray(new String[0])
+                tags.stream().toList()
         );
 
-        ideaRepository.addTagsToIdea(idea.getId(), categories.toArray(new String[0]));
+        ideaRepository.addTagsToIdea(idea.getId(), categories.stream().toList());
 
         return idea.getId();
     }

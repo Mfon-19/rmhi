@@ -66,16 +66,12 @@ public interface StagedIdeaRepository extends JpaRepository<StagedIdea, String> 
     @Query("SELECT s.migrationStatus, COUNT(s) FROM StagedIdea s GROUP BY s.migrationStatus")
     List<Object[]> getStagingSummaryByMigrationStatus();
 
-    // Find recently scraped ideas
-    @Query("SELECT s FROM StagedIdea s WHERE s.scrapedAt >= :since ORDER BY s.scrapedAt DESC")
-    List<StagedIdea> findRecentlyScraped(@Param("since") LocalDateTime since);
-
     // Find ideas from the last N days for duplicate detection
     @Query("SELECT s FROM StagedIdea s WHERE s.scrapedAt >= :cutoffDate ORDER BY s.scrapedAt DESC")
     List<StagedIdea> findRecentIdeas(@Param("cutoffDate") LocalDateTime cutoffDate);
 
-    boolean existsBySourceUrl(String sourceUrl);
+    boolean existsByOriginalUrl(String originalUrl);
 
-    @Query("SELECT s.sourceUrl FROM StagedIdea s")
+    @Query("SELECT s.originalUrl FROM StagedIdea s")
     Set<String> findAllSourceUrls();
 }

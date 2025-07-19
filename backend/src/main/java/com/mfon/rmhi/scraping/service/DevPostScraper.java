@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-public class DevPostScraper extends AbstractWebsiteScraper {
+public class DevPostScraper {
 
     private static final String BASE_URL = "https://worldslargesthackathon.devpost.com";
     private static final String GALLERY_URL = BASE_URL + "/project-gallery?page=";
@@ -40,8 +40,7 @@ public class DevPostScraper extends AbstractWebsiteScraper {
         this.stagedIdeaRepository = stagedIdeaRepository;
     }
 
-    @Override
-    protected List<ScrapedIdea> performScraping(ScrapingConfig config) throws Exception {
+    public List<ScrapedIdea> scrape(ScrapingConfig config) throws Exception {
         log.info("Starting DevPost scraping with config: {}", config.getSourceName());
 
         log.info("Loading existing project URLs from the database...");
@@ -255,4 +254,30 @@ public class DevPostScraper extends AbstractWebsiteScraper {
 
         return content.toString().trim();
     }
+
+    public boolean validateScrapedData(ScrapedIdea idea) {
+        if (idea == null) {
+            log.warn("Scraped idea is null.");
+            return false;
+        }
+
+        boolean isValid = true;
+        if (idea.getTitle() == null || idea.getTitle().trim().isEmpty()) {
+            log.warn("Validation failed for idea from {}: Title is missing.", idea.getSourceUrl());
+            isValid = false;
+        }
+
+        if (idea.getDescription() == null || idea.getDescription().trim().isEmpty()) {
+            log.warn("Validation failed for idea from {}: Description is missing.", idea.getSourceUrl());
+            isValid = false;
+        }
+
+        if (idea.getSourceUrl() == null || idea.getSourceUrl().trim().isEmpty()) {
+            log.warn("Validation failed for idea with title '{}': Source URL is missing.", idea.getTitle());
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
 }

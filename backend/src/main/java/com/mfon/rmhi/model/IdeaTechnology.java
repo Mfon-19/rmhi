@@ -6,19 +6,16 @@ import jakarta.persistence.*;
 @Table(name = "scraped_idea_technologies")
 public class IdeaTechnology {
 
-    @Id
-    @Column(name = "idea_id")
-    private Long ideaId;
-
-    @Id
-    @Column(name = "technology_id")
-    private Integer technologyId;
+    @EmbeddedId
+    private IdeaTechnologyId id;
 
     @ManyToOne
-    @JoinColumn(name = "idea_id", insertable = false, updatable = false)
+    @MapsId("ideaId")
+    @JoinColumn(name = "idea_id")
     private Idea idea;
 
     @ManyToOne
-    @JoinColumn(name = "technology_id", insertable = false, updatable = false)
+    @MapsId("technologyId")
+    @JoinColumn(name = "technology_id")
     private Technology technology;
 }

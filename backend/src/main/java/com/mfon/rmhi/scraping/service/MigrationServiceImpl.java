@@ -170,7 +170,7 @@ public class MigrationServiceImpl implements MigrationService {
                 .warnings(new ArrayList<>());
 
         try {
-            List<StagedIdea> stagedIdeas = stagedIdeaRepository.findAllById(stagedIdeaIds);
+            List<StagedIdea> stagedIdeas = stagedIdeaRepository.findAllById(stagedIdeaIds.stream().map(String::valueOf).collect(Collectors.toList()));
             
             // Filter only approved ideas
             List<StagedIdea> approvedIdeas = stagedIdeas.stream()
@@ -241,7 +241,7 @@ public class MigrationServiceImpl implements MigrationService {
             log.info("Starting rollback for migration {} affecting {} ideas", migrationId, migratedIdeaIds.size());
             
             // Find staged ideas that were migrated
-            List<StagedIdea> stagedIdeas = stagedIdeaRepository.findAllById(migratedIdeaIds);
+            List<StagedIdea> stagedIdeas = stagedIdeaRepository.findAllById(migratedIdeaIds.stream().map(String::valueOf).collect(Collectors.toList()));
             
             for (StagedIdea stagedIdea : stagedIdeas) {
                 if (stagedIdea.getProductionIdeaId() != null) {
@@ -336,8 +336,7 @@ public class MigrationServiceImpl implements MigrationService {
      */
     private Idea mapStagedIdeaToProduction(StagedIdea stagedIdea) {
         Idea idea = new Idea();
-        
-        // Map basic fields
+
         idea.setProjectName(stagedIdea.getProjectName());
         idea.setShortDescription(stagedIdea.getShortDescription());
         idea.setSolution(stagedIdea.getSolution());
@@ -346,18 +345,16 @@ public class MigrationServiceImpl implements MigrationService {
         idea.setCreatedBy(stagedIdea.getCreatedBy());
         idea.setLikes(stagedIdea.getLikes());
         idea.setRating(stagedIdea.getRating());
-        
-        // Map technologies
-        if (stagedIdea.getTechnologies() != null && stagedIdea.getTechnologies().length > 0) {
-            Set<Technology> technologies = Arrays.stream(stagedIdea.getTechnologies())
+
+        if (stagedIdea.getTechnologies() != null && !stagedIdea.getTechnologies().isEmpty()) {
+            Set<Technology> technologies = stagedIdea.getTechnologies().stream()
                     .map(this::findOrCreateTechnology)
                     .collect(Collectors.toSet());
             idea.setTechnologies(technologies);
         }
-        
-        // Map categories
-        if (stagedIdea.getCategories() != null && stagedIdea.getCategories().length > 0) {
-            Set<Category> categories = Arrays.stream(stagedIdea.getCategories())
+
+        if (stagedIdea.getCategories() != null && !stagedIdea.getCategories().isEmpty()) {
+            Set<Category> categories = stagedIdea.getCategories().stream()
                     .map(this::findOrCreateCategory)
                     .collect(Collectors.toSet());
             idea.setCategories(categories);

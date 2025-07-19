@@ -21,10 +21,7 @@ public class ScraperRegistrationConfig implements CommandLineRunner {
     @Override
     public void run(String... args) {
         log.info("Registering scrapers with orchestrator");
-        
-        // Register DevPost scraper
-        scrapingOrchestrator.registerScraper("DevPostScraper", devPostScraper);
-        
+
         log.info("Scraper registration completed");
     }
 }

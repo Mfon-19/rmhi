@@ -34,18 +34,10 @@ public class ScrapingOrchestrator {
     private final ScrapingExecutionRepository scrapingExecutionRepository;
     private final DuplicateDetectionService duplicateDetectionService;
     private final MonitoringService monitoringService;
-    private final Map<String, AbstractWebsiteScraper> scraperRegistry = new ConcurrentHashMap<>();
+    private final DevPostScraper devPostScraper;
     
     private static final int MAX_CONCURRENT_SCRAPERS = 3;
     private final ExecutorService executorService = Executors.newFixedThreadPool(MAX_CONCURRENT_SCRAPERS);
-    
-    /**
-     * Registers a scraper implementation for a specific website
-     */
-    public void registerScraper(String scraperClass, AbstractWebsiteScraper scraper) {
-        scraperRegistry.put(scraperClass, scraper);
-        log.info("Registered scraper: {} -> {}", scraperClass, scraper.getClass().getSimpleName());
-    }
     
     /**
      * Executes scraping for all enabled sources
@@ -109,20 +101,19 @@ public class ScrapingOrchestrator {
             ScrapingConfig config = convertToConfig(source);
             
             // Get the appropriate scraper
-            AbstractWebsiteScraper scraper = scraperRegistry.get(source.getScraperClass());
-            if (scraper == null) {
-                throw new IllegalStateException("No scraper registered for class: " + source.getScraperClass());
+            if (!source.getScraperClass().equals(DevPostScraper.class.getName())) {
+                throw new IllegalStateException("Only DevPostScraper is supported, but found: " + source.getScraperClass());
             }
-            
+
             // Execute scraping
-            List<ScrapedIdea> scrapedIdeas = scraper.scrapeIdeas(config);
+            List<ScrapedIdea> scrapedIdeas = devPostScraper.scrape(config);
             
             // Filter duplicates
             List<ScrapedIdea> uniqueIdeas = duplicateDetectionService.filterDuplicates(scrapedIdeas);
             
             // Validate scraped data
             List<ScrapedIdea> validIdeas = uniqueIdeas.stream()
-                    .filter(scraper::validateScrapedData)
+                    .filter(devPostScraper::validateScrapedData)
                     .collect(Collectors.toList());
             
             // Create successful result

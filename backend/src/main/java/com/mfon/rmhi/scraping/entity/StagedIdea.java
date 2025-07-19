@@ -9,6 +9,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.List;
 
 @Entity
 @Table(name = "staged_ideas")
@@ -69,11 +70,11 @@ public class StagedIdea {
     // Technologies and categories as JSON arrays
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String[] technologies;
+    private List<String> technologies;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String[] categories;
+    private List<String> categories;
 
     // Review and migration status
     @Enumerated(EnumType.STRING)

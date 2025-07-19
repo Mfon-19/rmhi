@@ -3,12 +3,15 @@ package com.mfon.rmhi.scraping.service;
 import com.mfon.rmhi.scraping.dto.ScrapedIdea;
 import com.mfon.rmhi.scraping.dto.ScrapingConfig;
 import com.mfon.rmhi.scraping.dto.ScrapingResult;
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
  * Core interface for scraping project ideas from various websites
  */
+@Service
 public interface IdeaScrapingService {
     
     /**

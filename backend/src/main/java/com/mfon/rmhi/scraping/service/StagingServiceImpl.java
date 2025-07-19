@@ -62,10 +62,10 @@ public class StagingServiceImpl implements StagingService {
         
         // Convert lists to arrays for JPA
         if (transformedIdea.getTechnologies() != null) {
-            stagedIdea.setTechnologies(transformedIdea.getTechnologies().toArray(new String[0]));
+            stagedIdea.setTechnologies(transformedIdea.getTechnologies());
         }
         if (transformedIdea.getCategories() != null) {
-            stagedIdea.setCategories(transformedIdea.getCategories().toArray(new String[0]));
+            stagedIdea.setCategories(transformedIdea.getCategories());
         }
         
         // Set content hash for duplicate detection
@@ -103,7 +103,7 @@ public class StagingServiceImpl implements StagingService {
     public void updateReviewStatus(Long stagedIdeaId, ReviewStatus status, String reviewedBy, String reviewNotes) {
         log.debug("Updating review status for idea ID: {} to {}", stagedIdeaId, status);
         
-        Optional<StagedIdea> optionalIdea = stagedIdeaRepository.findById(stagedIdeaId);
+        Optional<StagedIdea> optionalIdea = stagedIdeaRepository.findById(String.valueOf(stagedIdeaId));
         if (optionalIdea.isEmpty()) {
             throw new IllegalArgumentException("Staged idea not found with ID: " + stagedIdeaId);
         }
@@ -134,7 +134,7 @@ public class StagingServiceImpl implements StagingService {
     
     @Override
     public Optional<StagedIdea> findById(Long id) {
-        return stagedIdeaRepository.findById(id);
+        return stagedIdeaRepository.findById(String.valueOf(id));
     }
     
     @Override

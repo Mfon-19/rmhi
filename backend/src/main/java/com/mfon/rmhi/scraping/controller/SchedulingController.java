@@ -57,10 +57,9 @@ public class SchedulingController {
     @PostMapping("/jobs/daily/trigger")
     public ResponseEntity<String> triggerDailyJob() {
         try {
-            // This would typically trigger the job asynchronously
-            // For now, we'll just return a success message
             log.info("Manual trigger requested for daily scraping job");
-            return ResponseEntity.ok("Daily scraping job trigger requested");
+            scheduledService.triggerDailyJob();
+            return ResponseEntity.ok("Daily scraping job has been triggered successfully.");
         } catch (Exception e) {
             log.error("Error triggering daily job", e);
             return ResponseEntity.internalServerError().body("Failed to trigger daily job");

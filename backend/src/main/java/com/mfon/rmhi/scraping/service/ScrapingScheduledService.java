@@ -7,6 +7,7 @@ import com.mfon.rmhi.scraping.entity.ScrapingSource;
 import com.mfon.rmhi.scraping.repository.ScrapingExecutionRepository;
 import com.mfon.rmhi.scraping.repository.ScrapingSourceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -19,6 +20,8 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -35,9 +38,10 @@ public class ScrapingScheduledService {
     private final ScrapingSourceRepository scrapingSourceRepository;
     private final ScrapingExecutionRepository scrapingExecutionRepository;
     private final MonitoringService monitoringService;
-    private final IdeaScrapingService ideaScrapingService;
     private final GeminiTransformationService transformationService;
     private final StagingService stagingService;
+    
+    private final ExecutorService manualTriggerExecutor = Executors.newSingleThreadExecutor();
     
     @Value("${scraping.scheduling.enabled:true}")
     private boolean schedulingEnabled;
@@ -57,6 +61,13 @@ public class ScrapingScheduledService {
     // Track running jobs to prevent concurrent execution
     private final Map<String, JobExecutionContext> runningJobs = new ConcurrentHashMap<>();
     private final AtomicBoolean globalJobRunning = new AtomicBoolean(false);
+    
+    /**
+     * Manually triggers the daily scraping job asynchronously.
+     */
+    public void triggerDailyJob() {
+        manualTriggerExecutor.submit(this::executeDailyScrapingJob);
+    }
     
     /**
      * Main scheduled job that runs every hour to check for sources that need scraping
@@ -383,6 +394,7 @@ public class ScrapingScheduledService {
         private final LocalDateTime startTime;
         private LocalDateTime endTime;
         private String status = "RUNNING";
+        @Setter
         private String sourceName;
         private int ideasScraped = 0;
         private int ideasTransformed = 0;
@@ -429,7 +441,7 @@ public class ScrapingScheduledService {
         public LocalDateTime getEndTime() { return endTime; }
         public String getStatus() { return status; }
         public String getSourceName() { return sourceName; }
-        public void setSourceName(String sourceName) { this.sourceName = sourceName; }
+
         public int getIdeasScraped() { return ideasScraped; }
         public int getIdeasTransformed() { return ideasTransformed; }
         public int getIdeasStaged() { return ideasStaged; }

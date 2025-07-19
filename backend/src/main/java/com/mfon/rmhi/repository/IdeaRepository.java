@@ -6,9 +6,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.query.Procedure;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface IdeaRepository extends JpaRepository<Idea, Long> {
     @Procedure("add_tags_to_idea")
-    void addTagsToIdea(Long p_idea_id, String[] p_tags);
+    void addTagsToIdea(Long p_idea_id, List<String> p_tags);
 
     /**
      * Check if an idea with the same project name and created by already exists
