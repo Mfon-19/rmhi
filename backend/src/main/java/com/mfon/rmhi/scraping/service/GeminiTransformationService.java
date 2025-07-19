@@ -36,6 +36,7 @@ public class GeminiTransformationService implements AITransformationService {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private final Semaphore concurrencyLimiter;
+    private final MonitoringService monitoringService;
     
     @Value("${scraping.ai-transformation.api-key}")
     private String apiKey;
@@ -49,20 +50,22 @@ public class GeminiTransformationService implements AITransformationService {
     @Value("${scraping.ai-transformation.max-tokens:1000}")
     private Integer maxTokens;
     
-    public GeminiTransformationService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
+    public GeminiTransformationService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper, MonitoringService monitoringService) {
         this.webClient = webClientBuilder
                 .baseUrl(GEMINI_API_BASE_URL)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
         this.objectMapper = objectMapper;
         this.concurrencyLimiter = new Semaphore(MAX_CONCURRENT_REQUESTS);
+        this.monitoringService = monitoringService;
     }
     
     // Constructor for testing with custom WebClient
-    public GeminiTransformationService(WebClient webClient, ObjectMapper objectMapper) {
+    public GeminiTransformationService(WebClient webClient, ObjectMapper objectMapper, MonitoringService monitoringService) {
         this.webClient = webClient;
         this.objectMapper = objectMapper;
         this.concurrencyLimiter = new Semaphore(MAX_CONCURRENT_REQUESTS);
+        this.monitoringService = monitoringService;
     }
     
     @Override
@@ -80,21 +83,40 @@ public class GeminiTransformationService implements AITransformationService {
     
     @Override
     public List<TransformedIdea> batchTransform(List<ScrapedIdea> ideas) {
-        log.info("Starting batch transformation of {} ideas", ideas.size());
+        String operationId = "batch-transform-" + System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         
-        List<CompletableFuture<TransformedIdea>> futures = ideas.stream()
-                .map(this::transformIdeaAsync)
-                .collect(Collectors.toList());
+        monitoringService.recordOperationStart("AI_TRANSFORMATION", operationId, 
+                String.format("Starting batch transformation of %d ideas", ideas.size()));
         
-        List<TransformedIdea> results = futures.stream()
-                .map(CompletableFuture::join)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        
-        log.info("Batch transformation completed. Successfully transformed {}/{} ideas", 
-                results.size(), ideas.size());
-        
-        return results;
+        try {
+            List<CompletableFuture<TransformedIdea>> futures = ideas.stream()
+                    .map(this::transformIdeaAsync)
+                    .collect(Collectors.toList());
+            
+            List<TransformedIdea> results = futures.stream()
+                    .map(CompletableFuture::join)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            
+            long durationMs = System.currentTimeMillis() - startTime;
+            
+            // Record performance metrics
+            recordTransformationMetrics(operationId, ideas.size(), results.size(), durationMs);
+            
+            boolean allSuccessful = results.size() == ideas.size();
+            monitoringService.recordOperationComplete("AI_TRANSFORMATION", operationId, durationMs, allSuccessful);
+            
+            log.info("Batch transformation completed. Successfully transformed {}/{} ideas", 
+                    results.size(), ideas.size());
+            
+            return results;
+            
+        } catch (Exception e) {
+            monitoringService.recordError("AI_TRANSFORMATION", operationId, e.getMessage(), e, 
+                    String.format("Failed during batch transformation of %d ideas", ideas.size()));
+            throw e;
+        }
     }
     
     @Override
@@ -330,5 +352,26 @@ public class GeminiTransformationService implements AITransformationService {
     
     private boolean isBlank(String str) {
         return str == null || str.trim().isEmpty();
+    }
+    
+    /**
+     * Records performance metrics for transformation operations
+     */
+    private void recordTransformationMetrics(String operationId, int inputCount, int outputCount, long durationMs) {
+        PerformanceMetrics metrics = PerformanceMetrics.builder()
+                .operationType("AI_TRANSFORMATION")
+                .operationId(operationId)
+                .timestamp(LocalDateTime.now())
+                .durationMs(durationMs)
+                .itemsProcessed(outputCount)
+                .itemsPerSecond(durationMs > 0 ? (double) outputCount / (durationMs / 1000.0) : 0)
+                .batchSize(inputCount)
+                .aiRequestCount(inputCount)
+                .aiSuccessRate((double) outputCount / inputCount * 100)
+                .successful(outputCount > 0)
+                .context(String.format("Transformed %d/%d ideas successfully", outputCount, inputCount))
+                .build();
+        
+        monitoringService.recordPerformanceMetrics("AI_TRANSFORMATION", metrics);
     }
 }

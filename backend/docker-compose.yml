@@ -1,0 +1,120 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: rmhi-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rmhi}
+      POSTGRES_USER: ${POSTGRES_USER:-rmhi_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rmhi_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/main/resources/db/migration:/docker-entrypoint-initdb.d
+    networks:
+      - rmhi-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-rmhi_user} -d ${POSTGRES_DB:-rmhi}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: rmhi-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - rmhi-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Main RMHI Application
+  rmhi-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rmhi-app
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-rmhi}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rmhi_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rmhi_password}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      FIREBASE_CONFIG_PATH: ${FIREBASE_CONFIG_PATH:-/app/secrets/firebase/serviceAccount.json}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - ./src/main/resources/secrets:/app/secrets:ro
+    networks:
+      - rmhi-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Scraping Service (separate container for scaling)
+  rmhi-scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile.scraping
+    container_name: rmhi-scraper
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-rmhi}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rmhi_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rmhi_password}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SCRAPING_ENABLED: ${SCRAPING_ENABLED:-true}
+      SCRAPING_CRON_EXPRESSION: ${SCRAPING_CRON_EXPRESSION:-0 0 2 * * ?}
+      LOGGING_LEVEL_COM_MFON_RMHI_SCRAPING: ${SCRAPING_LOG_LEVEL:-INFO}
+    ports:
+      - "${SCRAPER_PORT:-8081}:8080"
+    networks:
+      - rmhi-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+networks:
+  rmhi-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

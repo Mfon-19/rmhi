@@ -81,4 +81,13 @@ public interface ScrapingExecutionRepository extends JpaRepository<ScrapingExecu
     // Get daily execution summary
     @Query("SELECT DATE(e.startedAt), e.status, COUNT(e) FROM ScrapingExecution e WHERE e.startedAt >= :since GROUP BY DATE(e.startedAt), e.status ORDER BY DATE(e.startedAt) DESC")
     List<Object[]> getDailyExecutionSummary(@Param("since") LocalDateTime since);
+
+    // Find executions by status and started after a certain time
+    List<ScrapingExecution> findByStatusAndStartedAtAfter(ScrapingExecution.ExecutionStatus status, LocalDateTime startedAt);
+
+    // Check if source has execution after a certain time
+    boolean existsBySourceAndStartedAtAfter(ScrapingSource source, LocalDateTime startedAt);
+
+    // Find top execution by source ordered by started time descending
+    Optional<ScrapingExecution> findTopBySourceOrderByStartedAtDesc(ScrapingSource source);
 }

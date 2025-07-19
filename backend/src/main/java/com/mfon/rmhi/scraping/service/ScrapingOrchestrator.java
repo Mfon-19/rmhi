@@ -33,6 +33,7 @@ public class ScrapingOrchestrator {
     private final ScrapingSourceRepository scrapingSourceRepository;
     private final ScrapingExecutionRepository scrapingExecutionRepository;
     private final DuplicateDetectionService duplicateDetectionService;
+    private final MonitoringService monitoringService;
     private final Map<String, AbstractWebsiteScraper> scraperRegistry = new ConcurrentHashMap<>();
     
     private static final int MAX_CONCURRENT_SCRAPERS = 3;
@@ -50,30 +51,49 @@ public class ScrapingOrchestrator {
      * Executes scraping for all enabled sources
      */
     public List<ScrapingResult> executeAllScraping() {
-        log.info("Starting orchestrated scraping for all enabled sources");
+        String operationId = "orchestration-" + System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         
-        List<ScrapingSource> enabledSources = scrapingSourceRepository.findByEnabledTrue();
-        if (enabledSources.isEmpty()) {
-            log.warn("No enabled scraping sources found");
-            return List.of();
+        monitoringService.recordOperationStart("ORCHESTRATION", operationId, "Starting orchestrated scraping for all enabled sources");
+        
+        try {
+            List<ScrapingSource> enabledSources = scrapingSourceRepository.findByEnabledTrue();
+            if (enabledSources.isEmpty()) {
+                log.warn("No enabled scraping sources found");
+                monitoringService.recordOperationComplete("ORCHESTRATION", operationId, 
+                        System.currentTimeMillis() - startTime, false);
+                return List.of();
+            }
+            
+            log.info("Found {} enabled scraping sources", enabledSources.size());
+            
+            // Create scraping tasks
+            List<CompletableFuture<ScrapingResult>> futures = enabledSources.stream()
+                    .map(this::createScrapingTask)
+                    .collect(Collectors.toList());
+            
+            // Wait for all tasks to complete
+            List<ScrapingResult> results = futures.stream()
+                    .map(CompletableFuture::join)
+                    .collect(Collectors.toList());
+            
+            // Aggregate and log results
+            logAggregatedResults(results);
+            
+            // Record performance metrics
+            recordOrchestrationMetrics(operationId, results, System.currentTimeMillis() - startTime);
+            
+            boolean allSuccessful = results.stream().allMatch(ScrapingResult::isSuccessful);
+            monitoringService.recordOperationComplete("ORCHESTRATION", operationId, 
+                    System.currentTimeMillis() - startTime, allSuccessful);
+            
+            return results;
+            
+        } catch (Exception e) {
+            monitoringService.recordError("ORCHESTRATION", operationId, e.getMessage(), e, 
+                    "Failed during orchestrated scraping execution");
+            throw e;
         }
-        
-        log.info("Found {} enabled scraping sources", enabledSources.size());
-        
-        // Create scraping tasks
-        List<CompletableFuture<ScrapingResult>> futures = enabledSources.stream()
-                .map(this::createScrapingTask)
-                .collect(Collectors.toList());
-        
-        // Wait for all tasks to complete
-        List<ScrapingResult> results = futures.stream()
-                .map(CompletableFuture::join)
-                .collect(Collectors.toList());
-        
-        // Aggregate and log results
-        logAggregatedResults(results);
-        
-        return results;
     }
     
     /**
@@ -233,6 +253,28 @@ public class ScrapingOrchestrator {
                 log.error("✗ {}: {}", result.getSourceName(), result.getErrorMessage());
             }
         });
+    }
+    
+    /**
+     * Records performance metrics for orchestration operations
+     */
+    private void recordOrchestrationMetrics(String operationId, List<ScrapingResult> results, long durationMs) {
+        int totalIdeas = results.stream().mapToInt(ScrapingResult::getIdeasScraped).sum();
+        long successfulSources = results.stream().filter(ScrapingResult::isSuccessful).count();
+        
+        com.mfon.rmhi.scraping.dto.PerformanceMetrics metrics = com.mfon.rmhi.scraping.dto.PerformanceMetrics.builder()
+                .operationType("ORCHESTRATION")
+                .operationId(operationId)
+                .timestamp(LocalDateTime.now())
+                .durationMs(durationMs)
+                .itemsProcessed(totalIdeas)
+                .itemsPerSecond(durationMs > 0 ? (double) totalIdeas / (durationMs / 1000.0) : 0)
+                .batchSize(results.size())
+                .successful(successfulSources == results.size())
+                .context(String.format("Processed %d sources, scraped %d ideas", results.size(), totalIdeas))
+                .build();
+        
+        monitoringService.recordPerformanceMetrics("ORCHESTRATION", metrics);
     }
     
     /**

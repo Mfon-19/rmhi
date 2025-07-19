@@ -26,6 +26,7 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").authenticated()
+                .requestMatchers("/api/monitoring/**").permitAll() // Allow monitoring endpoints for health checks
                 .anyRequest().permitAll()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));

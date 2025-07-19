@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rmhi-scraper-config
+  namespace: rmhi-scraping
+data:
+  application.properties: |
+    spring.application.name=rmhi-scraping-service
+    spring.profiles.active=production
+
+    # Database Configuration
+    spring.datasource.url=${DATABASE_URL}
+    spring.datasource.username=${DATABASE_USERNAME}
+    spring.datasource.password=${DATABASE_PASSWORD}
+    spring.datasource.driver-class-name=org.postgresql.Driver
+
+    # Connection Pool Configuration
+    spring.datasource.hikari.maximum-pool-size=20
+    spring.datasource.hikari.minimum-idle=5
+    spring.datasource.hikari.idle-timeout=300000
+    spring.datasource.hikari.max-lifetime=1200000
+    spring.datasource.hikari.connection-timeout=20000
+
+    # JPA Configuration
+    spring.jpa.hibernate.ddl-auto=validate
+    spring.jpa.show-sql=false
+    spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+    # Flyway Configuration
+    spring.flyway.enabled=true
+    spring.flyway.locations=classpath:db/migration
+
+    # Redis Configuration
+    spring.redis.host=${REDIS_HOST}
+    spring.redis.port=${REDIS_PORT:6379}
+    spring.redis.password=${REDIS_PASSWORD}
+    spring.redis.timeout=5000ms
+
+    # Actuator Configuration
+    management.endpoints.web.exposure.include=health,info,metrics,prometheus
+    management.endpoint.health.show-details=when-authorized
+    management.metrics.export.prometheus.enabled=true
+    management.server.port=8081
+
+    # Scraping Configuration
+    scraping.enabled=${SCRAPING_ENABLED:true}
+    scraping.default-rate-limit=1000
+    scraping.max-concurrent-scrapers=5
+    scraping.cron.expression=${SCRAPING_CRON_EXPRESSION:0 0 2 * * ?}
+
+    # AI Transformation Configuration
+    ai.transformation.provider=gemini
+    ai.transformation.api-key=${GEMINI_API_KEY}
+    ai.transformation.model=gemini-2.0-flash-exp
+    ai.transformation.max-tokens=2000
+    ai.transformation.temperature=0.7
+    ai.transformation.batch-size=10
+    ai.transformation.timeout=60s
+
+    # Staging Configuration
+    staging.duplicate-threshold=0.85
+    staging.auto-approve=false
+    staging.retention-days=90
+
+    # Migration Configuration
+    migration.batch-size=100
+    migration.enable-rollback=true
+
+    # Logging Configuration
+    logging.level.com.mfon.rmhi.scraping=INFO
+    logging.level.org.springframework.web=WARN
+    logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{traceId:-},%X{spanId:-}] [%thread] %-5level %logger{36} - %msg%n

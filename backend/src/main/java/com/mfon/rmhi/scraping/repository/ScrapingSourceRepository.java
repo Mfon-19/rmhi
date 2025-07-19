@@ -49,4 +49,7 @@ public interface ScrapingSourceRepository extends JpaRepository<ScrapingSource, 
     // Count enabled vs disabled sources
     @Query("SELECT s.enabled, COUNT(s) FROM ScrapingSource s GROUP BY s.enabled")
     List<Object[]> getSourceCountByStatus();
+    
+    // Count enabled sources
+    long countByEnabledTrue();
 }

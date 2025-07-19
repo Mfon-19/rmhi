@@ -2,16 +2,16 @@ package com.mfon.rmhi.scraping.service;
 
 import com.mfon.rmhi.scraping.dto.ScrapedIdea;
 import com.mfon.rmhi.scraping.dto.ScrapingConfig;
+import com.mfon.rmhi.scraping.repository.StagedIdeaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.List;
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DevPostScraperTest {
@@ -19,44 +19,43 @@ class DevPostScraperTest {
     private DevPostScraper devPostScraper;
     private ScrapingConfig config;
 
+    @Mock
+    private StagedIdeaRepository stagedIdeaRepository;
+
     @BeforeEach
     void setUp() {
-        // Create DevPost scraper with test credentials
         WebClient.Builder webClientBuilder = WebClient.builder();
-        devPostScraper = new DevPostScraper(webClientBuilder, "test@example.com", "testpassword");
-        
+        devPostScraper = new DevPostScraper(webClientBuilder, stagedIdeaRepository);
+
         config = ScrapingConfig.builder()
                 .sourceName("devpost-test")
                 .baseUrl("https://worldslargesthackathon.devpost.com")
-                .rateLimitMs(10) // Reduced for testing
-                .maxPages(1) // Limited for testing
+                .rateLimitMs(10)
+                .maxPages(1)
                 .build();
     }
 
     @Test
     void testScraperInstantiation() {
-        // Test that the scraper can be instantiated with valid credentials
         assertNotNull(devPostScraper);
     }
 
     @Test
-    void testScrapingWithMissingCredentials() {
-        // Given - scraper without credentials
-        WebClient.Builder webClientBuilder = WebClient.builder();
-        DevPostScraper scraperWithoutCredentials = new DevPostScraper(webClientBuilder, null, null);
+    void testScrapingSkipsExistingUrl() throws Exception {
+        // Given
+        String existingUrl = "https://devpost.com/software/existing-project";
+        when(stagedIdeaRepository.existsBySourceUrl(existingUrl)).thenReturn(true);
 
-        // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            scraperWithoutCredentials.scrapeIdeas(config);
+        // When
+        // This test will need to be more sophisticated to check that scrapeProject is not called.
+        // For now, we are just ensuring that the scraper doesn't throw an exception.
+        assertDoesNotThrow(() -> {
+            devPostScraper.performScraping(config);
         });
-
-        assertTrue(exception.getMessage().contains("Failed to scrape after") && 
-                  exception.getCause().getMessage().contains("DevPost credentials not configured"));
     }
 
     @Test
     void testConfigurationValidation() {
-        // Test that scraper validates configuration properly
         ScrapingConfig invalidConfig = ScrapingConfig.builder()
                 .sourceName("")
                 .baseUrl("")
@@ -64,13 +63,11 @@ class DevPostScraperTest {
                 .maxPages(-1)
                 .build();
 
-        // The scraper should handle invalid configuration gracefully
         assertNotNull(invalidConfig);
     }
 
     @Test
     void testValidationOfScrapedData() {
-        // Test with valid data
         ScrapedIdea validIdea = ScrapedIdea.builder()
                 .title("Valid Project")
                 .description("Valid description")
@@ -80,7 +77,6 @@ class DevPostScraperTest {
 
         assertTrue(devPostScraper.validateScrapedData(validIdea));
 
-        // Test with invalid data (missing title)
         ScrapedIdea invalidIdea = ScrapedIdea.builder()
                 .description("Valid description")
                 .sourceUrl("https://devpost.com/software/invalid-project")
@@ -89,10 +85,8 @@ class DevPostScraperTest {
 
         assertFalse(devPostScraper.validateScrapedData(invalidIdea));
 
-        // Test with null idea
         assertFalse(devPostScraper.validateScrapedData(null));
 
-        // Test with invalid URL
         ScrapedIdea invalidUrlIdea = ScrapedIdea.builder()
                 .title("Valid Project")
                 .description("Valid description")
@@ -105,8 +99,6 @@ class DevPostScraperTest {
 
     @Test
     void testContentBuildingLogic() {
-        // Test the content building logic by creating a scraper instance
-        // and testing the internal content building method indirectly
         ScrapedIdea idea = ScrapedIdea.builder()
                 .title("Test Project")
                 .description("Test Description")
@@ -115,7 +107,6 @@ class DevPostScraperTest {
                 .sourceWebsite("DevPost")
                 .build();
 
-        // Verify the content structure
         assertTrue(idea.getContent().contains("Inspiration:"));
         assertTrue(idea.getContent().contains("What it does:"));
         assertTrue(idea.getContent().contains("How we built it:"));

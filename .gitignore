@@ -55,3 +55,4 @@ build
 ./backend/target
 /ts-test/
 .kiro/
+backend/docs

@@ -9,9 +9,10 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
-public interface StagedIdeaRepository extends JpaRepository<StagedIdea, Long> {
+public interface StagedIdeaRepository extends JpaRepository<StagedIdea, String> {
 
     // Find staged ideas by review status
     List<StagedIdea> findByReviewStatus(StagedIdea.ReviewStatus reviewStatus);
@@ -72,4 +73,9 @@ public interface StagedIdeaRepository extends JpaRepository<StagedIdea, Long> {
     // Find ideas from the last N days for duplicate detection
     @Query("SELECT s FROM StagedIdea s WHERE s.scrapedAt >= :cutoffDate ORDER BY s.scrapedAt DESC")
     List<StagedIdea> findRecentIdeas(@Param("cutoffDate") LocalDateTime cutoffDate);
+
+    boolean existsBySourceUrl(String sourceUrl);
+
+    @Query("SELECT s.sourceUrl FROM StagedIdea s")
+    Set<String> findAllSourceUrls();
 }

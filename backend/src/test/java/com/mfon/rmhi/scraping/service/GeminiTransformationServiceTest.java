@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 class GeminiTransformationServiceTest {
     
@@ -36,7 +37,8 @@ class GeminiTransformationServiceTest {
                 .build();
         
         // Use the test constructor that accepts WebClient directly
-        service = new GeminiTransformationService(mockWebClient, objectMapper);
+        MonitoringService mockMonitoringService = mock(MonitoringService.class);
+        service = new GeminiTransformationService(mockWebClient, objectMapper, mockMonitoringService);
         
         // Set private fields using reflection
         ReflectionTestUtils.setField(service, "apiKey", "test-api-key");

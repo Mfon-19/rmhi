@@ -1,0 +1,191 @@
+# Prometheus alerting rules for RMHI Scraping Service
+groups:
+  - name: rmhi-scraping-service
+    rules:
+      # Service Health Alerts
+      - alert: ScrapingServiceDown
+        expr: up{job="rmhi-scraper"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: rmhi-scraper
+        annotations:
+          summary: "RMHI Scraping Service is down"
+          description: "The RMHI scraping service has been down for more than 5 minutes."
+          runbook_url: "https://docs.company.com/runbooks/rmhi-scraping#service-down"
+
+      - alert: ScrapingServiceHighMemoryUsage
+        expr: (jvm_memory_used_bytes{job="rmhi-scraper", area="heap"} / jvm_memory_max_bytes{job="rmhi-scraper", area="heap"}) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          service: rmhi-scraper
+        annotations:
+          summary: "High memory usage in scraping service"
+          description: "Memory usage is above 85% for more than 10 minutes."
+
+      - alert: ScrapingServiceHighCPUUsage
+        expr: rate(process_cpu_seconds_total{job="rmhi-scraper"}[5m]) * 100 > 80
+        for: 15m
+        labels:
+          severity: warning
+          service: rmhi-scraper
+        annotations:
+          summary: "High CPU usage in scraping service"
+          description: "CPU usage is above 80% for more than 15 minutes."
+
+  - name: scraping-operations
+    rules:
+      # Scraping Performance Alerts
+      - alert: NoScrapingExecutions
+        expr: increase(scraping_executions_total{job="rmhi-scraper"}[24h]) == 0
+        for: 1h
+        labels:
+          severity: high
+          service: rmhi-scraper
+        annotations:
+          summary: "No scraping executions in last 24 hours"
+          description: "No scraping executions have been recorded in the last 24 hours."
+          runbook_url: "https://docs.company.com/runbooks/rmhi-scraping#no-executions"
+
+      - alert: HighScrapingFailureRate
+        expr: (rate(scraping_executions_failed_total{job="rmhi-scraper"}[1h]) / rate(scraping_executions_total{job="rmhi-scraper"}[1h])) * 100 > 20
+        for: 30m
+        labels:
+          severity: high
+          service: rmhi-scraper
+        annotations:
+          summary: "High scraping failure rate"
+          description: "Scraping failure rate is above 20% for the last hour."
+
+      - alert: LowIdeasScrapedRate
+        expr: rate(ideas_scraped_total{job="rmhi-scraper"}[24h]) < 10
+        for: 2h
+        labels:
+          severity: medium
+          service: rmhi-scraper
+        annotations:
+          summary: "Low ideas scraped rate"
+          description: "Less than 10 ideas scraped per day for the last 2 hours."
+
+  - name: ai-transformation
+    rules:
+      # AI Transformation Alerts
+      - alert: AITransformationServiceDown
+        expr: ai_transformation_service_available{job="rmhi-scraper"} == 0
+        for: 5m
+        labels:
+          severity: high
+          service: rmhi-scraper
+        annotations:
+          summary: "AI transformation service unavailable"
+          description: "AI transformation service has been unavailable for more than 5 minutes."
+
+      - alert: HighAITransformationFailureRate
+        expr: (rate(ai_transformation_failed_total{job="rmhi-scraper"}[1h]) / rate(ai_transformation_total{job="rmhi-scraper"}[1h])) * 100 > 15
+        for: 30m
+        labels:
+          severity: medium
+          service: rmhi-scraper
+        annotations:
+          summary: "High AI transformation failure rate"
+          description: "AI transformation failure rate is above 15% for the last hour."
+
+      - alert: SlowAITransformationResponse
+        expr: histogram_quantile(0.95, rate(ai_transformation_duration_seconds_bucket{job="rmhi-scraper"}[5m])) > 60
+        for: 10m
+        labels:
+          severity: warning
+          service: rmhi-scraper
+        annotations:
+          summary: "Slow AI transformation response times"
+          description: "95th percentile of AI transformation response time is above 60 seconds."
+
+  - name: database-alerts
+    rules:
+      # Database Alerts
+      - alert: DatabaseConnectionPoolExhausted
+        expr: hikari_connections_active{job="rmhi-scraper"} >= hikari_connections_max{job="rmhi-scraper"}
+        for: 5m
+        labels:
+          severity: high
+          service: rmhi-scraper
+        annotations:
+          summary: "Database connection pool exhausted"
+          description: "All database connections are in use."
+
+      - alert: HighDatabaseConnectionUsage
+        expr: (hikari_connections_active{job="rmhi-scraper"} / hikari_connections_max{job="rmhi-scraper"}) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: rmhi-scraper
+        annotations:
+          summary: "High database connection usage"
+          description: "Database connection usage is above 80%."
+
+      - alert: StagingTableGrowthRate
+        expr: increase(staging_table_size_bytes{job="rmhi-scraper"}[24h]) > 1073741824 # 1GB
+        for: 1h
+        labels:
+          severity: medium
+          service: rmhi-scraper
+        annotations:
+          summary: "High staging table growth rate"
+          description: "Staging table has grown by more than 1GB in the last 24 hours."
+
+  - name: business-metrics
+    rules:
+      # Business Logic Alerts
+      - alert: LowIdeaApprovalRate
+        expr: (rate(ideas_approved_total{job="rmhi-scraper"}[7d]) / rate(ideas_staged_total{job="rmhi-scraper"}[7d])) * 100 < 30
+        for: 4h
+        labels:
+          severity: medium
+          service: rmhi-scraper
+        annotations:
+          summary: "Low idea approval rate"
+          description: "Idea approval rate is below 30% for the last week."
+
+      - alert: PendingReviewBacklog
+        expr: staging_pending_review_count{job="rmhi-scraper"} > 1000
+        for: 2h
+        labels:
+          severity: medium
+          service: rmhi-scraper
+        annotations:
+          summary: "Large pending review backlog"
+          description: "More than 1000 ideas are pending review."
+
+      - alert: MigrationServiceDown
+        expr: migration_service_available{job="rmhi-scraper"} == 0
+        for: 10m
+        labels:
+          severity: medium
+          service: rmhi-scraper
+        annotations:
+          summary: "Migration service unavailable"
+          description: "Migration service has been unavailable for more than 10 minutes."
+
+  - name: external-dependencies
+    rules:
+      # External Service Alerts
+      - alert: ExternalAPIRateLimitHit
+        expr: rate(external_api_rate_limit_errors_total{job="rmhi-scraper"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: rmhi-scraper
+        annotations:
+          summary: "External API rate limit hit"
+          description: "Rate limit has been hit for external API calls."
+
+      - alert: ExternalAPIHighLatency
+        expr: histogram_quantile(0.95, rate(external_api_request_duration_seconds_bucket{job="rmhi-scraper"}[5m])) > 30
+        for: 10m
+        labels:
+          severity: warning
+          service: rmhi-scraper
+        annotations:
+          summary: "High latency for external API calls"
+          description: "95th percentile latency for external API calls is above 30 seconds."

@@ -2,3 +2,41 @@ src/main/resources/
 build
 .gradle
 target/
+
+### Environment and Secrets ###
+.env
+.env.local
+.env.production
+*.key
+*.pem
+src/main/resources/secrets/
+
+### Logs ###
+logs/
+*.log
+*.log.*
+
+### Backups ###
+backups/
+*.dump
+*.sql.backup
+
+### Monitoring Data ###
+monitoring/data/
+prometheus_data/
+grafana_data/
+alertmanager_data/
+
+### Docker ###
+.dockerignore
+
+### IDE ###
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+### OS ###
+.DS_Store
+Thumbs.db

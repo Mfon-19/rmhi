@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rmhi-scraper
+  namespace: rmhi-scraping
+  labels:
+    app: rmhi-scraper
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rmhi-scraper
+  template:
+    metadata:
+      labels:
+        app: rmhi-scraper
+        version: v1
+    spec:
+      containers:
+        - name: rmhi-scraper
+          image: rmhi-scraper:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 8081
+              name: management
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rmhi-secrets
+                  key: database-url
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rmhi-secrets
+                  key: database-username
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rmhi-secrets
+                  key: database-password
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: rmhi-secrets
+                  key: redis-host
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rmhi-secrets
+                  key: redis-password
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rmhi-secrets
+                  key: gemini-api-key
+            - name: SCRAPING_ENABLED
+              value: "true"
+            - name: SCRAPING_CRON_EXPRESSION
+              value: "0 0 2 * * ?"
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config
+            - name: logs-volume
+              mountPath: /app/logs
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: config-volume
+          configMap:
+            name: rmhi-scraper-config
+        - name: logs-volume
+          emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rmhi-scraper-service
+  namespace: rmhi-scraping
+  labels:
+    app: rmhi-scraper
+spec:
+  selector:
+    app: rmhi-scraper
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: management
+      port: 8081
+      targetPort: 8081
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rmhi-scraper-metrics
+  namespace: rmhi-scraping
+  labels:
+    app: rmhi-scraper
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8081"
+    prometheus.io/path: "/actuator/prometheus"
+spec:
+  selector:
+    app: rmhi-scraper
+  ports:
+    - name: metrics
+      port: 8081
+      targetPort: 8081
+  type: ClusterIP

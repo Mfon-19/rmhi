@@ -33,6 +33,7 @@ public class MigrationServiceImpl implements MigrationService {
     private final IdeaRepository ideaRepository;
     private final TechnologyRepository technologyRepository;
     private final CategoryRepository categoryRepository;
+    private final MonitoringService monitoringService;
     
     @Value("${scraping.migration.batch-size:50}")
     private int defaultBatchSize;
@@ -55,8 +56,10 @@ public class MigrationServiceImpl implements MigrationService {
     public MigrationResult migrateApprovedIdeas(int batchSize) {
         String migrationId = generateMigrationId();
         LocalDateTime startTime = LocalDateTime.now();
+        long operationStartTime = System.currentTimeMillis();
         
-        log.info("Starting migration {} with batch size {}", migrationId, batchSize);
+        monitoringService.recordOperationStart("MIGRATION", migrationId, 
+                String.format("Starting migration with batch size %d", batchSize));
         
         MigrationResult.MigrationResultBuilder resultBuilder = MigrationResult.builder()
                 .migrationId(migrationId)
@@ -120,13 +123,22 @@ public class MigrationServiceImpl implements MigrationService {
             migrationHistory.put(migrationId, result);
             migrationToIdeaIds.put(migrationId, migratedIdeaIds);
             
+            // Record performance metrics
+            long durationMs = System.currentTimeMillis() - operationStartTime;
+            recordMigrationMetrics(migrationId, totalMigrated, totalSkipped, totalFailed, durationMs);
+            
+            // Record operation completion
+            monitoringService.recordOperationComplete("MIGRATION", migrationId, durationMs, successful);
+            
             log.info("Migration {} completed. Migrated: {}, Skipped: {}, Failed: {}", 
                     migrationId, totalMigrated, totalSkipped, totalFailed);
             
             return result;
             
         } catch (Exception e) {
-            log.error("Migration {} failed with exception", migrationId, e);
+            long durationMs = System.currentTimeMillis() - operationStartTime;
+            monitoringService.recordError("MIGRATION", migrationId, e.getMessage(), e, 
+                    String.format("Migration failed after %d ms", durationMs));
             
             MigrationResult result = resultBuilder
                     .successful(false)
@@ -389,6 +401,26 @@ public class MigrationServiceImpl implements MigrationService {
         );
     }
 
+    /**
+     * Records performance metrics for migration operations
+     */
+    private void recordMigrationMetrics(String migrationId, int migrated, int skipped, int failed, long durationMs) {
+        com.mfon.rmhi.scraping.dto.PerformanceMetrics metrics = com.mfon.rmhi.scraping.dto.PerformanceMetrics.builder()
+                .operationType("MIGRATION")
+                .operationId(migrationId)
+                .timestamp(LocalDateTime.now())
+                .durationMs(durationMs)
+                .itemsProcessed(migrated)
+                .itemsPerSecond(durationMs > 0 ? (double) migrated / (durationMs / 1000.0) : 0)
+                .batchSize(migrated + skipped + failed)
+                .databaseQueryCount(migrated * 2) // Estimate: one insert + one update per migrated idea
+                .successful(failed == 0)
+                .context(String.format("Migrated: %d, Skipped: %d, Failed: %d", migrated, skipped, failed))
+                .build();
+        
+        monitoringService.recordPerformanceMetrics("MIGRATION", metrics);
+    }
+    
     /**
      * Generate a unique migration ID
      */
