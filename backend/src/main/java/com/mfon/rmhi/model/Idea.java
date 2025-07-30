@@ -35,7 +35,6 @@ public class Idea {
     @JoinTable(name = "idea_categories",
             joinColumns        = @JoinColumn(name = "idea_id"),
             inverseJoinColumns = @JoinColumn(name = "category_id"))
-    @JsonManagedReference
     private Set<Category> categories = new HashSet<>();
 
     @JsonProperty("short_description")

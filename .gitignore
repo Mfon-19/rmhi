@@ -52,4 +52,7 @@ build
 /scraper/outscraper/
 /scraper/*
 /backend/.ideas
-/backend/targetbackend/target/
+/frontend/_ideas.json
+/ts-test/
+/backend/target
+.kiro/

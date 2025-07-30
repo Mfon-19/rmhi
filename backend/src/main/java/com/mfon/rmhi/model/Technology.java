@@ -25,7 +25,6 @@ public class Technology {
     private String name;
 
     @ManyToMany(mappedBy = "technologies")
-    @JsonBackReference
     @JsonIgnore
     private Set<Idea> ideas = new HashSet<>();
 
