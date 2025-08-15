@@ -2,6 +2,7 @@ requests
 beautifulsoup4
 black
 pydantic
+pydantic-settings
 boto3
 psycopg
 psycopg_pool

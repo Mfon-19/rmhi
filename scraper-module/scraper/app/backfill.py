@@ -1,9 +1,17 @@
-# This is meant to be run once to prefferably get all the hackathons on Devpost
+# This is meant to be run once to preferably get all the hackathons on Devpost
 
+from datetime import datetime
 import requests
 import json
 import time
-from datetime import datetime, timedelta
+import asyncio
+import logging
+from asyncio import Task
+from json import JSONDecodeError
+from scraper.app.db_ops import insert_into_hackathon, insert_into_hackathon_scrape_run
+
+should_stop_scraping = False
+logger = logging.getLogger("__name__")
 
 devpost_api_url = "https://devpost.com/api/hackathons"
 start_page = 1
@@ -12,50 +20,56 @@ batch_limit = 500
 
 
 def append_to_jsonl(filename, data_to_append):
-    """
-    Appends new hackathon data to the on disk JSON Lines file
-    """
     try:
         with open(filename, "a", encoding="utf-8") as f:
             for item in data_to_append:
                 f.write(json.dumps(item, ensure_ascii=False) + "\n")
-    except (FileNotFoundError, json.JSONDecodeError):
-        print("error")
-
-def record_last_page(page):
-    with open("last_page.txt", "w") as f:
-        f.write(f"Last page: {page}")
+    except (FileNotFoundError, JSONDecodeError) as e:
+        logger.error(f"[APPEND_TO_JSONL] Failed to append to JSONL: {e}")
 
 
-def calculate_submission_deadline(submission_period_dates: str) -> str:
-    sides = submission_period_dates.split("-")
-    return sides[-1].strip()
+def handle_task_exception(task: Task, hackathon_data = None):
+    global should_stop_scraping
+    try:
+        task.result()
+    except Exception as e:
+        logger.error(f"[DB_ERROR] Failed to insert hackathons: {e}")
+
+        if hackathon_data:
+            append_to_jsonl("failed_inserts.jsonl", hackathon_data)
+
+        if any(
+            keyword in str(e).lower()
+            for keyword in ["connection", "pool", "timeout", "database"]
+        ):
+            logger.critical("[CRITICAL] Database connection issue.")
+            should_stop_scraping = True
 
 
-def scrape_devpost() -> None:
-    """
-    Main function to scrape hackathon listings from Devpost.
-    It iterates through pages, extracts hackathon links, gets details for each,
-    and saves the data to a JSON file.
-    """
+async def scrape_devpost() -> None:
+    global should_stop_scraping
     hackathon_data = []
     hackathon_count = 0
     count = 0
-    last_page = 0
+    scrape_started = datetime.now()
+
     for i in range(start_page, end_page):
-        last_page = i
-        print(f"[SCRAPE_DEVPOST] Scraping page {i}")
+        if should_stop_scraping:
+            logger.info("[SCRAPE_DEVPOST] Stopping due to critical database errors")
+            break
+
+        logger.info(f"[SCRAPE_DEVPOST] Scraping page {i}")
         try:
             request = requests.get(devpost_api_url + f"?page={i}")
             result = request.json()
             hackathons = result["hackathons"]
 
+            if len(hackathons) == 0:
+                break
+
             for hackathon in hackathons:
                 url = hackathon["url"]
                 name = hackathon["title"]
-                submission_deadline = calculate_submission_deadline(
-                    hackathon["submission_period_dates"]
-                )
                 project_gallery_url = (
                     hackathon["submission_gallery_url"] or url + "/project-gallery"
                 )
@@ -64,29 +78,56 @@ def scrape_devpost() -> None:
                     {
                         "url": url,
                         "name": name,
-                        "submission_deadline": submission_deadline,
-                        "judging_ended": False,
                         "project_gallery_url": project_gallery_url,
                     }
                 )
 
-            print(f"[SCRAPE_DEVPOST] Found {len(hackathons)} hackathons on this page")
+            logger.info(
+                f"[SCRAPE_DEVPOST] Found {len(hackathons)} hackathons on this page"
+            )
             count += len(hackathons)
 
             hackathon_count += len(hackathon_data)
             if hackathon_count >= batch_limit:
-                append_to_jsonl("hackathons.jsonl", hackathon_data)
+                asyncio.create_task(insert_into_hackathon(hackathon_data.copy()))
                 hackathon_data.clear()
                 hackathon_count = 0
 
-            print(f"[SCRAPE_DEVPOST] {count} hackathons scraped")
+            logger.info(f"[SCRAPE_DEVPOST] {count} hackathons scraped \n")
             time.sleep(1)
         except (json.JSONDecodeError, requests.RequestException):
-            append_to_jsonl("hackathons.jsonl", hackathon_data)
+            hackathon_data_copy = hackathon_data.copy()
+            task = asyncio.create_task(insert_into_hackathon(hackathon_data_copy))
+            task.add_done_callback(
+                handle_task_exception(hackathon_data=hackathon_data_copy)
+            )
             hackathon_data.clear()
-            break
-    
-    record_last_page(last_page)
+            hackathon_count = 0
+
+    if hackathon_data:
+        asyncio.create_task(insert_into_hackathon(hackathon_data.copy()))
+        hackathon_data.clear()
+
+    scrape_end = datetime.now()
+    await insert_into_hackathon_scrape_run(scrape_started, scrape_end, "backfill", count, 0, "end_of_pages", "success", "")
+
+    # TODO: trigger the script to convert state from discovered -> ended
+    # TODO: if there are projects in the project gallery
+
+
+def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler("backfill.log"),
+            logging.StreamHandler(),
+        ],
+    )
+    logger.info("Started backfill")
+    asyncio.run(scrape_devpost())
+    logger.info("Finished backfill")
+
 
 if __name__ == "__main__":
-    scrape_devpost()
+    main()
