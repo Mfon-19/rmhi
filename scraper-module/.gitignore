@@ -1,2 +1,3 @@
 /scraper/hackathons.jsonl
 .env
+scraper/app/backfill.log

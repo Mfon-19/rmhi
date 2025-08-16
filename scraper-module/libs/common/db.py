@@ -38,7 +38,7 @@ async def db_conn(readonly: bool = False, search_path: Optional[str] = None):
         if search_path:
             await conn.execute(f"SET search_path TO {search_path}")
         if readonly:
-            await conn.execute("SET TRANSACTION READONLY")
+            await conn.execute("SET TRANSACTION READ ONLY")
         try:
             yield conn
             await conn.commit()
