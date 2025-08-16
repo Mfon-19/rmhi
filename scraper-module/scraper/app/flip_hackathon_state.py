@@ -9,7 +9,7 @@ async def flip_state_to_ended():
         project_gallery_urls = await get_discovered_hackathons()
         if not project_gallery_urls:
             return
-        logger.info(f"Found {len(project_gallery_urls)} hackathons to check")
+
         hackathon_ended = []
         for i, url in enumerate(project_gallery_urls):
             logger.info(f"Checking projects from {url}")

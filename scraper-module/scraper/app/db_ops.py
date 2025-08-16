@@ -119,7 +119,7 @@ async def update_states_to_ended(project_gallery_urls: List[str]) -> None:
         async with db_conn() as conn:
             async with conn.transaction():
                 async with conn.cursor() as cur:
-                    await cur.executemany(sql_statement, project_gallery_urls)
+                    await cur.executemany(sql_statement, [(url,) for url in project_gallery_urls])
     except Exception as e:
-        logger.error(f"Failed to flip hackathon states to ended: {e}")
+        logger.error(f"Failed to flip hackathon states to failed: {e}")
         raise
