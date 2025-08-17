@@ -69,11 +69,13 @@ CREATE TABLE IF NOT EXISTS ingest.hackathon_project_url (
 -- Projects scraped
 CREATE TABLE IF NOT EXISTS ingest.project (
     id                  BIGSERIAL PRIMARY KEY,
+    project_url         TEXT,
     project_name        VARCHAR(255)    NOT NULL,
     short_description   VARCHAR(255),
     solution            TEXT,
     problem_description TEXT,
-    technical_details   TEXT
+    technical_details   TEXT,
+    transformed         BOOLEAN
 );
 
 -- INDEXES tuned for dispatcher and lookups

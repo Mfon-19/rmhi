@@ -123,3 +123,35 @@ async def update_states_to_ended(project_gallery_urls: List[str]) -> None:
     except Exception as e:
         logger.error(f"Failed to flip hackathon states to failed: {e}")
         raise
+
+
+async def insert_into_project(projects: List[Dict]) -> None:
+    if not projects:
+        return
+
+    data_to_insert = []
+    required_fields = ["project_url", "project_name", "short_description", "problem_description", "solution", "technical_details"]
+    for project in projects:
+        for field in required_fields:
+            if field not in project or not project.get(field):
+                raise ValueError(f"Missing or empty required field: {field}")
+        data_to_insert.append(
+            (
+                project.get("project_url"),
+                project.get("project_name"),
+                project.get("short_description"),
+                project.get("problem_description"),
+                project.get("solution"),
+                project.get("technical_details")
+            )
+        )
+
+    sql_statement = "INSERT INTO ingest.project (project_url, project_name, short_description, problem_description, solution, technical_details, transformed) VALUES(%s, %s, %s, %s, %s, %s, %s);"
+    try:
+        async with db_conn(search_path=SEARCH_PATH) as conn:
+            async with conn.transaction():
+                async with conn.cursor() as cur:
+                    await cur.executemany(sql_statement, data_to_insert)
+    except Exception as e:
+        logger.error(f"Failed to insert projects: {e}, batch size: {len(projects)}")
+        raise
