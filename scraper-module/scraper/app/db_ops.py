@@ -110,6 +110,25 @@ async def get_discovered_hackathons() -> List[str]:
     return project_gallery_urls
 
 
+async def get_ended_hackathons() -> List[str]:
+    project_gallery_urls = []
+    try:
+        async with db_conn(search_path=SEARCH_PATH, readonly=True) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                        SELECT project_gallery_url FROM ingest.hackathon WHERE state = 'ended';
+                    """
+                )
+                async for row in cur:
+                    project_gallery_urls.append(row[0])
+    except Exception as e:
+        logger.error(f"Failed to get discovered hackathons: {e}")
+        raise
+
+    return project_gallery_urls
+
+
 async def get_recent_hackathon_urls(limit: int = 100) -> List[str]:
     urls: List[str] = []
     try:

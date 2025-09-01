@@ -9,7 +9,9 @@ import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional, Set
+from scraper.app import flip_hackathon_state
 from scraper.app.db_ops import (
+    get_ended_hackathons,
     insert_into_project,
     get_discovered_hackathons,
     get_recent_hackathon_urls,
@@ -269,8 +271,9 @@ async def main():
     )
 
     await scrape_devpost_daily_with_seen_stop()
+    await flip_hackathon_state()
 
-    project_gallery_urls = await get_discovered_hackathons()
+    project_gallery_urls = await get_ended_hackathons()
     if not project_gallery_urls:
         return
 
