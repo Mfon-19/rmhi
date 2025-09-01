@@ -23,8 +23,8 @@ async def insert_into_hackathon(hackathons: List[Dict]) -> None:
             (
                 hackathon.get("url"),
                 hackathon.get("name"),
-                hackathon.get("project_gallery_url")
-             )
+                hackathon.get("project_gallery_url"),
+            )
         )
 
     logger.info(f"Attempting to insert {len(data_to_insert)} hackathons")
@@ -110,16 +110,42 @@ async def get_discovered_hackathons() -> List[str]:
     return project_gallery_urls
 
 
+async def get_recent_hackathon_urls(limit: int = 100) -> List[str]:
+    urls: List[str] = []
+    try:
+        async with db_conn(search_path=SEARCH_PATH, readonly=True) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                        SELECT url FROM ingest.hackathon
+                        ORDER BY created_at DESC
+                        LIMIT %s;
+                    """,
+                    (limit,),
+                )
+                async for row in cur:
+                    urls.append(row[0])
+    except Exception as e:
+        logger.error(f"Failed to get recent hackathon urls: {e}")
+        raise
+
+    return urls
+
+
 async def update_states_to_ended(project_gallery_urls: List[str]) -> None:
     if not project_gallery_urls:
         return
 
-    sql_statement = "UPDATE ingest.hackathon SET state = 'ended' WHERE project_gallery_url = %s;"
+    sql_statement = (
+        "UPDATE ingest.hackathon SET state = 'ended' WHERE project_gallery_url = %s;"
+    )
     try:
         async with db_conn() as conn:
             async with conn.transaction():
                 async with conn.cursor() as cur:
-                    await cur.executemany(sql_statement, [(url,) for url in project_gallery_urls])
+                    await cur.executemany(
+                        sql_statement, [(url,) for url in project_gallery_urls]
+                    )
     except Exception as e:
         logger.error(f"Failed to flip hackathon states to failed: {e}")
         raise
@@ -130,7 +156,14 @@ async def insert_into_project(projects: List[Dict]) -> None:
         return
 
     data_to_insert = []
-    required_fields = ["project_url", "project_name", "short_description", "problem_description", "solution", "technical_details"]
+    required_fields = [
+        "project_url",
+        "project_name",
+        "short_description",
+        "problem_description",
+        "solution",
+        "technical_details",
+    ]
     for project in projects:
         for field in required_fields:
             if field not in project or not project.get(field):
@@ -142,7 +175,7 @@ async def insert_into_project(projects: List[Dict]) -> None:
                 project.get("short_description"),
                 project.get("problem_description"),
                 project.get("solution"),
-                project.get("technical_details")
+                project.get("technical_details"),
             )
         )
 
