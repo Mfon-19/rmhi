@@ -1,3 +1,8 @@
 /scraper/hackathons.jsonl
 .env
 scraper/app/backfill.log
+infra/terraform/.terraform
+infra/terraform/.terraform.lock.hcl
+infra/terraform/lambda.zip
+infra/terraform/terraform.tfstate
+infra/terraform/terraform.tfstate.backup

@@ -87,6 +87,25 @@ CREATE INDEX IF NOT EXISTS idx_ing_hpu_hackathon
   ON ingest.hackathon_project_url(hackathon_id);
 
 
+-- Transformed Projects Table
+CREATE TABLE IF NOT EXISTS ingest.transformed_project (
+    id                  BIGSERIAL PRIMARY KEY,
+    original_project_id BIGINT UNIQUE REFERENCES ingest.project(id) ON DELETE SET NULL,
+    project_name        VARCHAR(255) NOT NULL,
+    short_description   TEXT,
+    created_by          VARCHAR(255) DEFAULT 'anonymous',
+    problem_description TEXT,
+    solution            TEXT,
+    technical_details   TEXT,
+    comments            TEXT[],
+    likes               INT DEFAULT 0,
+    technologies        VARCHAR(100)[],
+    categories          VARCHAR(100)[],
+    rating              NUMERIC(3, 1),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+
 -- SCHEMA
 CREATE SCHEMA IF NOT EXISTS transform;
 

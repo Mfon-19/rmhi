@@ -16,9 +16,6 @@ provider "aws" {
   region = var.region
 }
 
-variable "region" { default = "us-east-1" }
-variable "project" { default = "eureka-scraper" }
-
 locals {
   name_prefix = "${var.project}-${var.region}"
 }
@@ -149,7 +146,7 @@ resource "aws_secretsmanager_secret_version" "db" {
 resource "aws_db_instance" "postgres" {
   identifier              = "${replace(local.name_prefix, "_", "-")}-pg"
   engine                  = "postgres"
-  engine_version          = "15.5"
+  engine_version          = "17.4"
   instance_class          = "db.t4g.small"
   allocated_storage       = 20
   storage_type            = "gp3"
@@ -454,7 +451,5 @@ resource "aws_sns_topic_subscription" "email" {
   protocol  = "email"
   endpoint  = var.alert_email
 }
-
-variable "alert_email" { default = "" }
 
 

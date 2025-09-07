@@ -8,4 +8,5 @@ output "backfill_task_def_arn" { value = aws_ecs_task_definition.backfill.arn }
 output "lambda_name" { value = aws_lambda_function.scheduler.function_name }
 output "db_endpoint" { value = aws_db_instance.postgres.address }
 output "db_secret_arn" { value = aws_secretsmanager_secret.db.arn }
+output "db_security_group_id" { value = aws_security_group.rds.id }
 
