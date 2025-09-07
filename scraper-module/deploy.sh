@@ -2,16 +2,15 @@
 set -euo pipefail
 
 # --- Configuration ---
-# Set your AWS CLI profile, or leave empty to use the default
-AWS_PROFILE="your-profile"
 # Set the region to deploy to
 AWS_REGION="us-east-1"
 # Set the project name (should match terraform variables)
 PROJECT_NAME="eureka-scraper"
 # Set the email for alerts
 ALERT_EMAIL="mfonezekel@gmail.com"
+# Set the Google API Key (ensure this is kept secure)
+GOOGLE_API_KEY="REDACTED_API_KEY"
 
-# --- Pre-flight checks ---
 for cmd in terraform aws docker jq psql curl; do
     if ! command -v "$cmd" &> /dev/null; then
         echo "Error: $cmd is not installed. Please install it and try again."
@@ -29,7 +28,8 @@ terraform init -upgrade
 terraform apply -auto-approve \
     -var "region=$AWS_REGION" \
     -var "project=$PROJECT_NAME" \
-    -var "alert_email=$ALERT_EMAIL"
+    -var "alert_email=$ALERT_EMAIL" \
+    -var "google_api_key=$GOOGLE_API_KEY"
 
 # 2. Capture Terraform Outputs
 echo " Mfonudoh Capturing Terraform outputs..."

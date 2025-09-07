@@ -12,3 +12,9 @@ variable "alert_email" {
   type = string
 }
 
+variable "google_api_key" {
+  type        = string
+  description = "The API key for Google Gemini."
+  sensitive   = true
+}
+

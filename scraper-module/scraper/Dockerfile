@@ -7,8 +7,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY scraper/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY scraper/requirements.txt /app/scraper-requirements.txt
+RUN pip install --no-cache-dir -r /app/scraper-requirements.txt
+
+COPY transformer/requirements.txt /app/transformer-requirements.txt
+RUN pip install --no-cache-dir -r /app/transformer-requirements.txt
 
 COPY . /app
 

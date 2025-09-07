@@ -135,12 +135,21 @@ resource "aws_secretsmanager_secret" "db" {
   name = "${local.name_prefix}-db-credentials"
 }
 
+resource "aws_secretsmanager_secret" "google_api_key" {
+  name = "${local.name_prefix}-google-api-key"
+}
+
 resource "aws_secretsmanager_secret_version" "db" {
   secret_id     = aws_secretsmanager_secret.db.id
   secret_string = jsonencode({
     username = "eureka_app",
     password = random_password.db.result
   })
+}
+
+resource "aws_secretsmanager_secret_version" "google_api_key" {
+  secret_id     = aws_secretsmanager_secret.google_api_key.id
+  secret_string = var.google_api_key
 }
 
 resource "aws_db_instance" "postgres" {
@@ -210,7 +219,10 @@ resource "aws_iam_role_policy_attachment" "task_execution" {
 data "aws_iam_policy_document" "task" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.db.arn]
+    resources = [
+      aws_secretsmanager_secret.db.arn,
+      aws_secretsmanager_secret.google_api_key.arn
+    ]
   }
 }
 
@@ -261,6 +273,10 @@ resource "aws_ecs_task_definition" "daily" {
         {
           name      = "DB_DSN",
           valueFrom = aws_secretsmanager_secret.db.arn
+        },
+        {
+          name      = "GOOGLE_API_KEY",
+          valueFrom = aws_secretsmanager_secret.google_api_key.arn
         }
       ]
       logConfiguration = {
@@ -296,6 +312,10 @@ resource "aws_ecs_task_definition" "backfill" {
         {
           name      = "DB_DSN",
           valueFrom = aws_secretsmanager_secret.db.arn
+        },
+        {
+          name      = "GOOGLE_API_KEY",
+          valueFrom = aws_secretsmanager_secret.google_api_key.arn
         }
       ]
       logConfiguration = {
