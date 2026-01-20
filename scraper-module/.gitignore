@@ -1,5 +1,7 @@
 /scraper/hackathons.jsonl
 .env
+.env.example
+*.sh
 __pycache__/
 *.pyc
 .venv/

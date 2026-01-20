@@ -3,15 +3,19 @@ set -euo pipefail
 
 # --- Configuration ---
 # Set the region to deploy to
-AWS_REGION="us-east-1"
+AWS_REGION="${AWS_REGION:-us-east-1}"
 # Set the project name (should match terraform variables)
-PROJECT_NAME="eureka-scraper"
+PROJECT_NAME="${PROJECT_NAME:-eureka-scraper-v2}"
 # Set the email for alerts
-ALERT_EMAIL="mfonezekel@gmail.com"
+ALERT_EMAIL="${ALERT_EMAIL:-mfonezekel@gmail.com}"
 # Set the Google API Key (ensure this is kept secure)
-GOOGLE_API_KEY="REDACTED_API_KEY"
+GOOGLE_API_KEY="${GOOGLE_API_KEY:-}"
+if [ -z "$GOOGLE_API_KEY" ]; then
+    echo "Error: GOOGLE_API_KEY is not set. Run: GOOGLE_API_KEY=YOUR_KEY ./deploy.sh"
+    exit 1
+fi
 
-for cmd in terraform aws docker jq psql curl; do
+for cmd in terraform aws docker jq; do
     if ! command -v "$cmd" &> /dev/null; then
         echo "Error: $cmd is not installed. Please install it and try again."
         exit 1
@@ -34,14 +38,14 @@ terraform apply -auto-approve \
 # 2. Capture Terraform Outputs
 echo " Mfonudoh Capturing Terraform outputs..."
 ECR_URL=$(terraform output -raw ecr_repo_url)
-SECRET_ARN=$(terraform output -raw db_secret_arn)
-DB_ENDPOINT=$(terraform output -raw db_endpoint)
 LAMBDA_NAME=$(terraform output -raw lambda_name)
-RDS_SG_ID=$(terraform output -raw db_security_group_id)
-
+CLUSTER_ARN=$(terraform output -raw ecs_cluster_arn)
+MIGRATION_TASK_DEF_ARN=$(terraform output -raw migration_task_def_arn)
+ECS_TASKS_SG_ID=$(terraform output -raw ecs_tasks_security_group_id)
+PUBLIC_SUBNETS_JSON=$(terraform output -json public_subnets)
 
 # Check if outputs are empty
-if [ -z "$ECR_URL" ] || [ -z "$SECRET_ARN" ] || [ -z "$DB_ENDPOINT" ] || [ -z "$LAMBDA_NAME" ] || [ -z "$RDS_SG_ID" ]; then
+if [ -z "$ECR_URL" ] || [ -z "$LAMBDA_NAME" ] || [ -z "$CLUSTER_ARN" ] || [ -z "$MIGRATION_TASK_DEF_ARN" ] || [ -z "$ECS_TASKS_SG_ID" ]; then
     echo "❌ Error: One or more Terraform outputs are empty. Aborting."
     exit 1
 fi
@@ -57,55 +61,53 @@ docker build -f scraper/Dockerfile -t "$ECR_URL:latest" .
 docker push "$ECR_URL:latest"
 echo "✅ Docker image pushed successfully."
 
-# 4. Update DB Secret with full DSN
-echo " Mfonudoh Checking and updating database secret..."
-CURRENT_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "$SECRET_ARN" --query SecretString --output text --region "$AWS_REGION")
+# 4. Apply Database Schema (inside ECS)
+echo " Mfonudoh Applying database schema inside ECS..."
+SUBNETS_CSV=$(echo "$PUBLIC_SUBNETS_JSON" | jq -r '. | join(",")')
+NETWORK_CONFIG="awsvpcConfiguration={subnets=[$SUBNETS_CSV],securityGroups=[$ECS_TASKS_SG_ID],assignPublicIp=ENABLED}"
 
-# Check if the secret is already a DSN. If so, get password from previous version.
-if [[ "$CURRENT_SECRET_VALUE" == postgresql://* ]]; then
-    echo "✅ Secret already contains a DSN. Retrieving password from previous version for psql."
-    DB_DSN="$CURRENT_SECRET_VALUE"
-    
-    # Get the previous version of the secret
-    PREVIOUS_SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRET_ARN" --version-stage AWSPREVIOUS --query SecretString --output text --region "$AWS_REGION")
-    DB_PASS=$(echo "$PREVIOUS_SECRET_JSON" | jq -r .password)
-    
-    if [ -z "$DB_PASS" ]; then
-        echo "❌ Could not get password from previous secret version. Manual intervention may be needed."
-        exit 1
-    fi
-else
-    echo " Mfonudoh Secret is in JSON format. Updating to full DSN..."
-    DB_USER=$(echo "$CURRENT_SECRET_VALUE" | jq -r .username)
-    DB_PASS=$(echo "$CURRENT_SECRET_VALUE" | jq -r .password)
-    DB_DSN="postgresql://${DB_USER}:${DB_PASS}@${DB_ENDPOINT}:5432/eureka"
+MIGRATION_TASK_ARN=$(aws ecs run-task \
+    --cluster "$CLUSTER_ARN" \
+    --launch-type FARGATE \
+    --task-definition "$MIGRATION_TASK_DEF_ARN" \
+    --network-configuration "$NETWORK_CONFIG" \
+    --query 'tasks[0].taskArn' \
+    --output text \
+    --region "$AWS_REGION")
 
-    aws secretsmanager put-secret-value --secret-id "$SECRET_ARN" --secret-string "$DB_DSN" --region "$AWS_REGION"
-    echo "✅ Secret updated successfully."
+if [ -z "$MIGRATION_TASK_ARN" ] || [ "$MIGRATION_TASK_ARN" = "None" ]; then
+    echo "❌ Error: Failed to start migration task."
+    exit 1
 fi
 
-# 5. Apply Database Schema (with temporary firewall rule)
-echo " Mfonudoh Applying database schema..."
+aws ecs wait tasks-stopped \
+    --cluster "$CLUSTER_ARN" \
+    --tasks "$MIGRATION_TASK_ARN" \
+    --region "$AWS_REGION"
 
-# --- Temporarily open firewall for DB access ---
-MY_IP=$(curl -s http://checkip.amazonaws.com)
-echo " Mfonudoh Temporarily allowing access from your IP: $MY_IP"
-aws ec2 authorize-security-group-ingress --group-id "$RDS_SG_ID" --protocol tcp --port 5432 --cidr "$MY_IP/32" --region "$AWS_REGION"
+MIGRATION_EXIT_CODE=$(aws ecs describe-tasks \
+    --cluster "$CLUSTER_ARN" \
+    --tasks "$MIGRATION_TASK_ARN" \
+    --query 'tasks[0].containers[0].exitCode' \
+    --output text \
+    --region "$AWS_REGION")
 
-# Setup a trap to automatically remove the firewall rule on exit
-function cleanup {
-  echo " Mfonudoh Cleaning up: Removing temporary firewall rule..."
-  aws ec2 revoke-security-group-ingress --group-id "$RDS_SG_ID" --protocol tcp --port 5432 --cidr "$MY_IP/32" --region "$AWS_REGION"
-}
-trap cleanup EXIT
+if [ "$MIGRATION_EXIT_CODE" != "0" ]; then
+    echo "❌ Migration task failed (exit code: $MIGRATION_EXIT_CODE)."
+    aws ecs describe-tasks \
+        --cluster "$CLUSTER_ARN" \
+        --tasks "$MIGRATION_TASK_ARN" \
+        --query 'tasks[0].stoppedReason' \
+        --output text \
+        --region "$AWS_REGION"
+    exit 1
+fi
 
-# The password may contain special characters, so we pass it via an environment variable
-PGPASSWORD="$DB_PASS" psql -h "$DB_ENDPOINT" -U "$DB_USER" -d "eureka" -f "db/schema.sql"
 echo "✅ Database schema applied successfully."
 echo " Mfonudoh IMPORTANT: Please check your email ($ALERT_EMAIL) to confirm the SNS subscription for alerts."
 
 
-# 6. Run One-Time Backfill
+# 5. Run One-Time Backfill
 echo " Mfonudoh Triggering the one-time backfill task..."
 aws lambda invoke \
     --function-name "$LAMBDA_NAME" \

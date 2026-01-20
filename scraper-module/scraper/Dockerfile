@@ -8,6 +8,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements/ingest.txt /app/requirements/ingest.txt
 COPY requirements/common.txt /app/requirements/common.txt
 RUN pip install --no-cache-dir -r /app/requirements/ingest.txt
@@ -16,4 +20,3 @@ COPY . /app
 
 ENV MODE=daily
 CMD ["python", "-m", "rmhi.ingest.cli"]
-

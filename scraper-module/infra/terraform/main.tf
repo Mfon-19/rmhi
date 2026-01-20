@@ -18,11 +18,15 @@ provider "aws" {
 
 locals {
   name_prefix = "${var.project}-${var.region}"
+  db_username = "eureka_app"
+  db_name     = "eureka"
+  db_port     = 5432
 }
 
 resource "random_password" "db" {
   length  = 24
   special = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
 resource "aws_vpc" "this" {
@@ -55,14 +59,6 @@ resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.this.id
 }
 
-resource "aws_eip" "nat" {
-  domain = "vpc"
-}
-
-resource "aws_nat_gateway" "nat" {
-  allocation_id = aws_eip.nat.id
-  subnet_id     = aws_subnet.public[0].id
-}
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id
@@ -84,11 +80,6 @@ resource "aws_route_table" "private" {
   vpc_id = aws_vpc.this.id
 }
 
-resource "aws_route" "private_nat" {
-  route_table_id         = aws_route_table.private.id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.nat.id
-}
 
 resource "aws_route_table_association" "private" {
   count          = 2
@@ -141,10 +132,7 @@ resource "aws_secretsmanager_secret" "google_api_key" {
 
 resource "aws_secretsmanager_secret_version" "db" {
   secret_id     = aws_secretsmanager_secret.db.id
-  secret_string = jsonencode({
-    username = "eureka_app",
-    password = random_password.db.result
-  })
+  secret_string = "postgresql://${local.db_username}:${urlencode(random_password.db.result)}@${aws_db_instance.postgres.address}:${local.db_port}/${local.db_name}"
 }
 
 resource "aws_secretsmanager_secret_version" "google_api_key" {
@@ -159,9 +147,9 @@ resource "aws_db_instance" "postgres" {
   instance_class          = "db.t4g.small"
   allocated_storage       = 20
   storage_type            = "gp3"
-  db_name                 = "eureka"
-  username                = jsondecode(aws_secretsmanager_secret_version.db.secret_string)["username"]
-  password                = jsondecode(aws_secretsmanager_secret_version.db.secret_string)["password"]
+  db_name                 = local.db_name
+  username                = local.db_username
+  password                = random_password.db.result
   vpc_security_group_ids  = [aws_security_group.rds.id]
   db_subnet_group_name    = aws_db_subnet_group.rds.name
   publicly_accessible     = false
@@ -172,6 +160,26 @@ resource "aws_db_instance" "postgres" {
 resource "aws_ecr_repository" "repo" {
   name                 = var.project
   image_tag_mutability = "MUTABLE"
+}
+
+resource "aws_ecr_lifecycle_policy" "repo" {
+  repository = aws_ecr_repository.repo.name
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 10 images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 10
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
 }
 
 resource "aws_cloudwatch_log_group" "ecs" {
@@ -191,6 +199,13 @@ data "aws_iam_policy_document" "task_execution" {
       "ecr:BatchGetImage"
     ]
     resources = ["*"]
+  }
+  statement {
+    actions = ["secretsmanager:GetSecretValue"]
+    resources = [
+      aws_secretsmanager_secret.db.arn,
+      aws_secretsmanager_secret.google_api_key.arn
+    ]
   }
 }
 
@@ -330,6 +345,38 @@ resource "aws_ecs_task_definition" "backfill" {
   ])
 }
 
+resource "aws_ecs_task_definition" "migrate" {
+  family                   = "${var.project}-migrate"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.task_execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+  container_definitions    = jsonencode([
+    {
+      name  = "${var.project}-migrate"
+      image = "${aws_ecr_repository.repo.repository_url}:latest"
+      essential = true
+      command = ["sh", "-c", "psql \"$DB_DSN\" -v ON_ERROR_STOP=1 -f /app/db/schema.sql"]
+      secrets = [
+        {
+          name      = "DB_DSN",
+          valueFrom = aws_secretsmanager_secret.db.arn
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs",
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs.name,
+          awslogs-region        = var.region,
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+    }
+  ])
+}
+
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${var.project}-scheduler"
   retention_in_days = 14
@@ -412,7 +459,7 @@ def lambda_handler(event, context):
             'awsvpcConfiguration': {
                 'subnets': SUBNETS,
                 'securityGroups': SECURITY_GROUPS,
-                'assignPublicIp': 'DISABLED'
+        'assignPublicIp': 'ENABLED'
             }
         },
         startedBy=f'{mode}-scheduler'
@@ -434,7 +481,7 @@ resource "aws_lambda_function" "scheduler" {
   environment {
     variables = {
       CLUSTER_ARN      = aws_ecs_cluster.this.arn,
-      SUBNETS          = join(",", aws_subnet.private[*].id),
+      SUBNETS          = join(",", aws_subnet.public[*].id),
       SECURITY_GROUPS  = aws_security_group.ecs_tasks.id,
       DAILY_TASK_DEF   = aws_ecs_task_definition.daily.arn,
       BACKFILL_TASK_DEF= aws_ecs_task_definition.backfill.arn
@@ -471,5 +518,3 @@ resource "aws_sns_topic_subscription" "email" {
   protocol  = "email"
   endpoint  = var.alert_email
 }
-
-
