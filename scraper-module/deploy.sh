@@ -14,6 +14,14 @@ if [ -z "$GOOGLE_API_KEY" ]; then
     echo "Error: GOOGLE_API_KEY is not set. Run: GOOGLE_API_KEY=YOUR_KEY ./deploy.sh"
     exit 1
 fi
+# Backend Firebase secret ARN (Secrets Manager)
+BACKEND_FIREBASE_SECRET_ARN="${BACKEND_FIREBASE_SECRET_ARN:-}"
+if [ -z "$BACKEND_FIREBASE_SECRET_ARN" ]; then
+    echo "Error: BACKEND_FIREBASE_SECRET_ARN is not set. Create a Secrets Manager secret with the Firebase admin JSON and pass its ARN."
+    exit 1
+fi
+# Backend CORS origins (comma-separated)
+BACKEND_CORS_ALLOWED_ORIGINS="${BACKEND_CORS_ALLOWED_ORIGINS:-http://localhost:3000}"
 
 for cmd in terraform aws docker jq; do
     if ! command -v "$cmd" &> /dev/null; then
@@ -33,7 +41,9 @@ terraform apply -auto-approve \
     -var "region=$AWS_REGION" \
     -var "project=$PROJECT_NAME" \
     -var "alert_email=$ALERT_EMAIL" \
-    -var "google_api_key=$GOOGLE_API_KEY"
+    -var "google_api_key=$GOOGLE_API_KEY" \
+    -var "backend_firebase_secret_arn=$BACKEND_FIREBASE_SECRET_ARN" \
+    -var "backend_cors_allowed_origins=$BACKEND_CORS_ALLOWED_ORIGINS"
 
 # 2. Capture Terraform Outputs
 echo " Mfonudoh Capturing Terraform outputs..."

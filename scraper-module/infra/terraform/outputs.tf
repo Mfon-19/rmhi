@@ -11,3 +11,6 @@ output "db_endpoint" { value = aws_db_instance.postgres.address }
 output "db_secret_arn" { value = aws_secretsmanager_secret.db.arn }
 output "db_security_group_id" { value = aws_security_group.rds.id }
 output "ecs_tasks_security_group_id" { value = aws_security_group.ecs_tasks.id }
+output "backend_alb_dns_name" { value = aws_lb.backend.dns_name }
+output "backend_ecr_repo_url" { value = aws_ecr_repository.backend.repository_url }
+output "backend_service_name" { value = aws_ecs_service.backend.name }
