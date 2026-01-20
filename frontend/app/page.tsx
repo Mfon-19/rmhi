@@ -6,7 +6,6 @@ import LeftSidebar from "./components/LeftSidebar";
 import MainFeed from "./components/MainFeed";
 import RightSidebar from "./components/RightSidebar";
 import PostIdeaModal from "./components/PostIdeaModal";
-import { importScrapedIdeas } from "./utils/actions";
 
 export default function Home() {
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);

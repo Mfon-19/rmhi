@@ -2,10 +2,6 @@
 
 import { useState } from "react";
 import CategoryChip, { getCategoryVariant } from "./CategoryChip";
-import { createIdea } from "../utils/actions";
-import { Idea } from "../utils/types";
-import { auth } from "../utils/firebase";
-import { toast } from "sonner";
 
 interface PostIdeaModalProps {
   isOpen: boolean;

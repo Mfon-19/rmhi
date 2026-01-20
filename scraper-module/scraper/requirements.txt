@@ -1,7 +1,1 @@
-requests
-beautifulsoup4
-black
-pydantic
-boto3
-psycopg
-psycopg_pool
+-r ../requirements/ingest.txt

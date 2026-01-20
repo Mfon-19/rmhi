@@ -1,0 +1,4 @@
+pydantic
+pydantic-settings
+psycopg
+psycopg_pool

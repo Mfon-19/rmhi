@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import IdeaCard from "./IdeaCard";
-import { Idea, Category, Technology } from "../utils/types";
-import { getIdeas } from "../utils/actions";
+import { Idea, Category, Technology } from "@/lib/types";
+import { getIdeas } from "@/lib/server/ideas";
 
 interface MainFeedProps {
   onPostIdea: () => void;

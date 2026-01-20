@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import CategoryChip, { getCategoryVariant } from "./CategoryChip";
-import { Idea, Category, Technology } from "../utils/types";
+import { Idea, Category, Technology } from "@/lib/types";
 
 type IdeaCardData = Omit<Idea, "categories" | "technologies"> & {
   categories: Category[] | string[];

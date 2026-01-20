@@ -1,4 +1,1 @@
-google-generativeai
-python-dotenv
-psycopg
-psycopg-pool
+-r ../requirements/transform.txt

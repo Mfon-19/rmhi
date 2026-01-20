@@ -1,0 +1,7 @@
+-r common.txt
+aiohttp
+beautifulsoup4
+httpx
+requests
+boto3
+black

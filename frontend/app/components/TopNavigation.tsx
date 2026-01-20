@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { auth } from "../utils/firebase";
-import useAuth from "../utils/useAuth";
+import useAuth from "@/lib/hooks/useAuth";
 
 export default function TopNavigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

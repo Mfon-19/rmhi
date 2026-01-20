@@ -1,10 +1,2 @@
-aiohttp
-beautifulsoup4
-black
-httpx
-pydantic
-pydantic-settings
-boto3
-psycopg
-psycopg_pool
-requests
+-r requirements/ingest.txt
+-r requirements/transform.txt
