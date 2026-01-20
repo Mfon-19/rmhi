@@ -29,68 +29,25 @@ resource "random_password" "db" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
-resource "aws_vpc" "this" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-  tags = { Name = "${local.name_prefix}-vpc" }
+data "aws_vpc" "default" {
+  default = true
 }
 
-data "aws_availability_zones" "available" {}
-
-resource "aws_subnet" "public" {
-  count                   = 2
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = cidrsubnet(aws_vpc.this.cidr_block, 8, count.index)
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
-  tags = { Name = "${local.name_prefix}-public-${count.index}" }
-}
-
-resource "aws_subnet" "private" {
-  count             = 2
-  vpc_id            = aws_vpc.this.id
-  cidr_block        = cidrsubnet(aws_vpc.this.cidr_block, 8, 100 + count.index)
-  availability_zone = data.aws_availability_zones.available.names[count.index]
-  tags = { Name = "${local.name_prefix}-private-${count.index}" }
-}
-
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.this.id
-}
-
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.this.id
-}
-
-resource "aws_route" "public_internet" {
-  route_table_id         = aws_route_table.public.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.igw.id
-}
-
-resource "aws_route_table_association" "public" {
-  count          = 2
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.this.id
-}
-
-
-resource "aws_route_table_association" "private" {
-  count          = 2
-  subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private.id
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+  filter {
+    name   = "default-for-az"
+    values = ["true"]
+  }
 }
 
 resource "aws_security_group" "ecs_tasks" {
   name        = "${local.name_prefix}-ecs-tasks"
   description = "ECS tasks egress"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = data.aws_vpc.default.id
   egress {
     from_port   = 0
     to_port     = 0
@@ -102,7 +59,7 @@ resource "aws_security_group" "ecs_tasks" {
 resource "aws_security_group" "rds" {
   name        = "${local.name_prefix}-rds"
   description = "RDS access from ECS"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = data.aws_vpc.default.id
   ingress {
     from_port       = 5432
     to_port         = 5432
@@ -119,7 +76,7 @@ resource "aws_security_group" "rds" {
 
 resource "aws_db_subnet_group" "rds" {
   name       = "${local.name_prefix}-rds-subnets"
-  subnet_ids = aws_subnet.private[*].id
+  subnet_ids = data.aws_subnets.default.ids
 }
 
 resource "aws_secretsmanager_secret" "db" {
@@ -267,47 +224,8 @@ resource "aws_ecs_cluster" "this" {
   name = local.name_prefix
 }
 
-resource "aws_ecs_task_definition" "daily" {
-  family                   = "${var.project}-daily"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "512"
-  memory                   = "1024"
-  execution_role_arn       = aws_iam_role.task_execution.arn
-  task_role_arn            = aws_iam_role.task.arn
-  container_definitions    = jsonencode([
-    {
-      name  = var.project
-      image = "${aws_ecr_repository.repo.repository_url}:latest"
-      essential = true
-      environment = [
-        { name = "MODE", value = "daily" },
-        { name = "APP_NAME", value = "daily" }
-      ]
-      secrets = [
-        {
-          name      = "DB_DSN",
-          valueFrom = aws_secretsmanager_secret.db.arn
-        },
-        {
-          name      = "GOOGLE_API_KEY",
-          valueFrom = aws_secretsmanager_secret.google_api_key.arn
-        }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs",
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.ecs.name,
-          awslogs-region        = var.region,
-          awslogs-stream-prefix = "ecs"
-        }
-      }
-    }
-  ])
-}
-
-resource "aws_ecs_task_definition" "backfill" {
-  family                   = "${var.project}-backfill"
+resource "aws_ecs_task_definition" "worker" {
+  family                   = "${var.project}-worker"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "1024"
@@ -320,8 +238,8 @@ resource "aws_ecs_task_definition" "backfill" {
       image = "${aws_ecr_repository.repo.repository_url}:latest"
       essential = true
       environment = [
-        { name = "MODE", value = "backfill" },
-        { name = "APP_NAME", value = "backfill" }
+        { name = "MODE", value = "daily" },
+        { name = "APP_NAME", value = "worker" }
       ]
       secrets = [
         {
@@ -377,116 +295,43 @@ resource "aws_ecs_task_definition" "migrate" {
   ])
 }
 
-resource "aws_cloudwatch_log_group" "lambda" {
-  name              = "/aws/lambda/${var.project}-scheduler"
-  retention_in_days = 14
-}
-
-data "aws_iam_policy_document" "lambda_assume" {
+data "aws_iam_policy_document" "events_assume" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
       type        = "Service"
-      identifiers = ["lambda.amazonaws.com"]
+      identifiers = ["events.amazonaws.com"]
     }
   }
 }
 
-resource "aws_iam_role" "lambda" {
-  name               = "${local.name_prefix}-lambda"
-  assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
+resource "aws_iam_role" "events" {
+  name               = "${local.name_prefix}-events"
+  assume_role_policy = data.aws_iam_policy_document.events_assume.json
 }
 
-data "aws_iam_policy_document" "lambda" {
+data "aws_iam_policy_document" "events" {
   statement {
-    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+    actions = ["ecs:RunTask"]
     resources = ["*"]
   }
   statement {
-    actions = [
-      "ecs:RunTask",
-      "ecs:ListTasks",
-      "ecs:DescribeTasks",
-      "iam:PassRole"
+    actions = ["iam:PassRole"]
+    resources = [
+      aws_iam_role.task_execution.arn,
+      aws_iam_role.task.arn
     ]
-    resources = ["*"]
   }
 }
 
-resource "aws_iam_policy" "lambda" {
-  name   = "${local.name_prefix}-lambda"
-  policy = data.aws_iam_policy_document.lambda.json
+resource "aws_iam_policy" "events" {
+  name   = "${local.name_prefix}-events"
+  policy = data.aws_iam_policy_document.events.json
 }
 
-resource "aws_iam_role_policy_attachment" "lambda" {
-  role       = aws_iam_role.lambda.name
-  policy_arn = aws_iam_policy.lambda.arn
-}
-
-data "archive_file" "lambda_zip" {
-  type        = "zip"
-  source {
-    content  = <<EOF
-import os
-import json
-import boto3
-
-ecs = boto3.client('ecs')
-
-CLUSTER_ARN = os.environ['CLUSTER_ARN']
-SUBNETS = os.environ['SUBNETS'].split(',')
-SECURITY_GROUPS = os.environ['SECURITY_GROUPS'].split(',')
-DAILY_TASK_DEF = os.environ['DAILY_TASK_DEF']
-BACKFILL_TASK_DEF = os.environ['BACKFILL_TASK_DEF']
-
-def lambda_handler(event, context):
-    mode = event.get('mode', 'daily')
-    if mode == 'daily':
-        # check if running
-        running = ecs.list_tasks(cluster=CLUSTER_ARN, desiredStatus='RUNNING', family='${var.project}-daily')
-        if running.get('taskArns'):
-            return {'skipped': True, 'reason': 'task already running'}
-
-        task_def = DAILY_TASK_DEF
-    else:
-        task_def = BACKFILL_TASK_DEF
-
-    resp = ecs.run_task(
-        cluster=CLUSTER_ARN,
-        launchType='FARGATE',
-        taskDefinition=task_def,
-        networkConfiguration={
-            'awsvpcConfiguration': {
-                'subnets': SUBNETS,
-                'securityGroups': SECURITY_GROUPS,
-        'assignPublicIp': 'ENABLED'
-            }
-        },
-        startedBy=f'{mode}-scheduler'
-    )
-    return {'started': True, 'tasks': len(resp.get('tasks', []))}
-EOF
-    filename = "index.py"
-  }
-  output_path = "lambda.zip"
-}
-
-resource "aws_lambda_function" "scheduler" {
-  function_name = "${local.name_prefix}-scheduler"
-  role          = aws_iam_role.lambda.arn
-  handler       = "index.lambda_handler"
-  runtime       = "python3.12"
-  filename      = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  environment {
-    variables = {
-      CLUSTER_ARN      = aws_ecs_cluster.this.arn,
-      SUBNETS          = join(",", aws_subnet.public[*].id),
-      SECURITY_GROUPS  = aws_security_group.ecs_tasks.id,
-      DAILY_TASK_DEF   = aws_ecs_task_definition.daily.arn,
-      BACKFILL_TASK_DEF= aws_ecs_task_definition.backfill.arn
-    }
-  }
+resource "aws_iam_role_policy_attachment" "events" {
+  role       = aws_iam_role.events.name
+  policy_arn = aws_iam_policy.events.arn
 }
 
 resource "aws_cloudwatch_event_rule" "daily" {
@@ -496,25 +341,94 @@ resource "aws_cloudwatch_event_rule" "daily" {
 
 resource "aws_cloudwatch_event_target" "daily" {
   rule      = aws_cloudwatch_event_rule.daily.name
-  target_id = "lambda"
-  arn       = aws_lambda_function.scheduler.arn
-  input     = jsonencode({ mode = "daily" })
+  target_id = "ecs"
+  arn       = aws_ecs_cluster.this.arn
+  role_arn  = aws_iam_role.events.arn
+  ecs_target {
+    task_definition_arn = aws_ecs_task_definition.worker.arn
+    launch_type         = "FARGATE"
+    task_count          = 1
+    network_configuration {
+      subnets          = data.aws_subnets.default.ids
+      security_groups  = [aws_security_group.ecs_tasks.id]
+      assign_public_ip = true
+    }
+  }
+  input = jsonencode({
+    containerOverrides = [
+      {
+        name = var.project,
+        environment = [
+          { name = "MODE", value = "daily" },
+          { name = "APP_NAME", value = "daily" }
+        ]
+      }
+    ]
+  })
 }
 
-resource "aws_lambda_permission" "events_invoke" {
-  statement_id  = "AllowExecutionFromCloudWatch"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.scheduler.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.daily.arn
+resource "aws_cloudwatch_event_rule" "transform" {
+  name                = "${local.name_prefix}-transform"
+  schedule_expression = "cron(30 3 * * ? *)"
 }
 
-resource "aws_sns_topic" "alerts" {
-  name = "${local.name_prefix}-alerts"
+resource "aws_cloudwatch_event_target" "transform" {
+  rule      = aws_cloudwatch_event_rule.transform.name
+  target_id = "ecs"
+  arn       = aws_ecs_cluster.this.arn
+  role_arn  = aws_iam_role.events.arn
+  ecs_target {
+    task_definition_arn = aws_ecs_task_definition.worker.arn
+    launch_type         = "FARGATE"
+    task_count          = 1
+    network_configuration {
+      subnets          = data.aws_subnets.default.ids
+      security_groups  = [aws_security_group.ecs_tasks.id]
+      assign_public_ip = true
+    }
+  }
+  input = jsonencode({
+    containerOverrides = [
+      {
+        name = var.project,
+        environment = [
+          { name = "MODE", value = "transform" },
+          { name = "APP_NAME", value = "transform" }
+        ]
+      }
+    ]
+  })
 }
 
-resource "aws_sns_topic_subscription" "email" {
-  topic_arn = aws_sns_topic.alerts.arn
-  protocol  = "email"
-  endpoint  = var.alert_email
+resource "aws_cloudwatch_event_rule" "transform_check" {
+  name                = "${local.name_prefix}-transform-check"
+  schedule_expression = "rate(24 hours)"
+}
+
+resource "aws_cloudwatch_event_target" "transform_check" {
+  rule      = aws_cloudwatch_event_rule.transform_check.name
+  target_id = "ecs"
+  arn       = aws_ecs_cluster.this.arn
+  role_arn  = aws_iam_role.events.arn
+  ecs_target {
+    task_definition_arn = aws_ecs_task_definition.worker.arn
+    launch_type         = "FARGATE"
+    task_count          = 1
+    network_configuration {
+      subnets          = data.aws_subnets.default.ids
+      security_groups  = [aws_security_group.ecs_tasks.id]
+      assign_public_ip = true
+    }
+  }
+  input = jsonencode({
+    containerOverrides = [
+      {
+        name = var.project,
+        environment = [
+          { name = "MODE", value = "transform_check" },
+          { name = "APP_NAME", value = "transform_check" }
+        ]
+      }
+    ]
+  })
 }

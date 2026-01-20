@@ -1,12 +1,9 @@
-output "vpc_id" { value = aws_vpc.this.id }
-output "private_subnets" { value = aws_subnet.private[*].id }
-output "public_subnets" { value = aws_subnet.public[*].id }
+output "vpc_id" { value = data.aws_vpc.default.id }
+output "public_subnets" { value = data.aws_subnets.default.ids }
 output "ecr_repo_url" { value = aws_ecr_repository.repo.repository_url }
 output "ecs_cluster_arn" { value = aws_ecs_cluster.this.arn }
-output "daily_task_def_arn" { value = aws_ecs_task_definition.daily.arn }
-output "backfill_task_def_arn" { value = aws_ecs_task_definition.backfill.arn }
+output "worker_task_def_arn" { value = aws_ecs_task_definition.worker.arn }
 output "migration_task_def_arn" { value = aws_ecs_task_definition.migrate.arn }
-output "lambda_name" { value = aws_lambda_function.scheduler.function_name }
 output "db_endpoint" { value = aws_db_instance.postgres.address }
 output "db_secret_arn" { value = aws_secretsmanager_secret.db.arn }
 output "db_security_group_id" { value = aws_security_group.rds.id }

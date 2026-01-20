@@ -1,0 +1,10 @@
+aiohttp
+beautifulsoup4
+google-generativeai
+httpx
+python-dotenv
+psycopg
+psycopg_pool
+pydantic
+pydantic-settings
+requests

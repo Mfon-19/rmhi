@@ -1,26 +1,31 @@
 # RMHI Scraper Module
 
-This module contains the ingest (scraper) and transform services used to
-discover hackathon projects and generate derivative ideas.
+This module runs the daily scrape, backfill, and transform jobs.
 
 Structure:
-- `src/rmhi/common`: shared DB/config helpers.
-- `src/rmhi/ingest`: daily/backfill scraping logic and CLI.
-- `src/rmhi/transform`: Gemini-based transformation logic and CLI.
+- `src/rmhi/cli.py`: single entrypoint for all modes.
+- `src/rmhi/jobs.py`: job runners.
+- `src/rmhi/scrape.py`: scraping logic.
+- `src/rmhi/transform.py`: Gemini-based transformations.
+- `src/rmhi/db.py`: database helpers.
+- `src/rmhi/settings.py`: environment config.
 
 Local usage:
 ```
 export PYTHONPATH=./src
-python -m rmhi.ingest.cli --mode daily
-python -m rmhi.ingest.cli --mode backfill
-python -m rmhi.transform.cli
+python -m rmhi.cli --mode daily
+python -m rmhi.cli --mode backfill
+python -m rmhi.cli --mode transform
+python -m rmhi.cli --mode transform_check
 ```
 
 Requirements:
-- Ingest: `requirements/ingest.txt`
-- Transform: `requirements/transform.txt`
+- `requirements.txt`
 
 Key env vars:
 - `DB_DSN`
 - `GOOGLE_API_KEY`
-- `AWS_REGION`, `AWS_ENDPOINT_URL`, `SQS_SCRAPE_URL`, `SQS_TRANSFORM_URL`
+- `MODE` (optional override for the CLI)
+
+Deployment notes:
+- Terraform uses the region's default VPC and default subnets.

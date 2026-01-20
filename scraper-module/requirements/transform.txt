@@ -1,3 +1,0 @@
--r common.txt
-google-generativeai
-python-dotenv

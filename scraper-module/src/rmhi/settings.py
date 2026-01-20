@@ -1,17 +1,15 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
-ROOT = Path(__file__).resolve().parents[3]
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
-    AWS_REGION: str = "us-west-2"
-    AWS_ENDPOINT_URL: Optional[str] = "http://localhost:4566"
-    SQS_SCRAPE_URL: Optional[str] = None
-    SQS_TRANSFORM_URL: Optional[str] = None
     DB_DSN: str = Field(..., validation_alias="DB_DSN")
+    GOOGLE_API_KEY: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=ROOT / ".env",
@@ -29,6 +27,3 @@ def get_settings() -> Settings:
     if _settings is None:
         _settings = Settings()
     return _settings
-
-
-settings = get_settings()

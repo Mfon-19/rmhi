@@ -12,11 +12,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements/ingest.txt /app/requirements/ingest.txt
-COPY requirements/common.txt /app/requirements/common.txt
-RUN pip install --no-cache-dir -r /app/requirements/ingest.txt
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY . /app
 
-ENV MODE=daily
-CMD ["python", "-m", "rmhi.ingest.cli"]
+CMD ["python", "-m", "rmhi.cli"]

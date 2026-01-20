@@ -33,7 +33,7 @@ resource "aws_cloudwatch_log_group" "backend" {
 resource "aws_security_group" "backend_alb" {
   name        = "${local.backend_name}-alb"
   description = "ALB ingress"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = data.aws_vpc.default.id
   ingress {
     from_port   = 80
     to_port     = 80
@@ -51,7 +51,7 @@ resource "aws_security_group" "backend_alb" {
 resource "aws_security_group" "backend_tasks" {
   name        = "${local.backend_name}-tasks"
   description = "Backend ECS tasks"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = data.aws_vpc.default.id
   ingress {
     from_port       = local.backend_container_port
     to_port         = local.backend_container_port
@@ -79,14 +79,14 @@ resource "aws_lb" "backend" {
   name               = "${local.backend_name}-alb"
   load_balancer_type = "application"
   security_groups    = [aws_security_group.backend_alb.id]
-  subnets            = aws_subnet.public[*].id
+  subnets            = data.aws_subnets.default.ids
 }
 
 resource "aws_lb_target_group" "backend" {
   name        = "${local.backend_name}-tg"
   port        = local.backend_container_port
   protocol    = "HTTP"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = data.aws_vpc.default.id
   target_type = "ip"
   health_check {
     path                = "/health"
@@ -237,7 +237,7 @@ resource "aws_ecs_service" "backend" {
   desired_count   = var.backend_desired_count
   launch_type     = "FARGATE"
   network_configuration {
-    subnets         = aws_subnet.public[*].id
+    subnets         = data.aws_subnets.default.ids
     security_groups = [aws_security_group.backend_tasks.id]
     assign_public_ip = true
   }

@@ -2,12 +2,53 @@
 set -euo pipefail
 
 # --- Configuration ---
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TF_DIR="$SCRIPT_DIR/infra/terraform"
+# Load .env if present, without overriding existing env vars.
+ENV_FILE="$SCRIPT_DIR/.env"
+if [ -f "$ENV_FILE" ]; then
+    trim() {
+        local s="$1"
+        s="${s#"${s%%[![:space:]]*}"}"
+        s="${s%"${s##*[![:space:]]}"}"
+        printf '%s' "$s"
+    }
+    strip_quotes() {
+        local s="$1"
+        # Only strip quotes if string is at least 2 characters long
+        if [ ${#s} -ge 2 ]; then
+            if [[ "$s" == \"* && "$s" == *\" ]]; then
+                s="${s:1:${#s}-2}"
+            elif [[ "$s" == \'* && "$s" == *\' ]]; then
+                s="${s:1:${#s}-2}"
+            fi
+        fi
+        printf '%s' "$s"
+    }
+    while IFS= read -r line || [ -n "$line" ]; do
+        line="$(trim "$line")"
+        [ -z "$line" ] && continue
+        [[ "$line" == \#* ]] && continue
+        if [[ "$line" == export\ * ]]; then
+            line="${line#export }"
+        fi
+        [[ "$line" != *"="* ]] && continue
+        key="${line%%=*}"
+        value="${line#*=}"
+        key="$(trim "$key")"
+        value="$(trim "$value")"
+        [ -z "$key" ] && continue
+        if [ -z "${!key+x}" ]; then
+            value="$(strip_quotes "$value")"
+            export "$key=$value"
+        fi
+    done < "$ENV_FILE"
+fi
+
 # Set the region to deploy to
 AWS_REGION="${AWS_REGION:-us-east-1}"
 # Set the project name (should match terraform variables)
 PROJECT_NAME="${PROJECT_NAME:-eureka-scraper-v2}"
-# Set the email for alerts
-ALERT_EMAIL="${ALERT_EMAIL:-mfonezekel@gmail.com}"
 # Set the Google API Key (ensure this is kept secure)
 GOOGLE_API_KEY="${GOOGLE_API_KEY:-}"
 if [ -z "$GOOGLE_API_KEY" ]; then
@@ -35,12 +76,11 @@ echo "✅ All required tools are installed."
 
 # 1. Apply Terraform Infrastructure
 echo " Mfonudoh Applying Terraform infrastructure..."
-cd infra/terraform
+cd "$TF_DIR"
 terraform init -upgrade
 terraform apply -auto-approve \
     -var "region=$AWS_REGION" \
     -var "project=$PROJECT_NAME" \
-    -var "alert_email=$ALERT_EMAIL" \
     -var "google_api_key=$GOOGLE_API_KEY" \
     -var "backend_firebase_secret_arn=$BACKEND_FIREBASE_SECRET_ARN" \
     -var "backend_cors_allowed_origins=$BACKEND_CORS_ALLOWED_ORIGINS"
@@ -48,14 +88,14 @@ terraform apply -auto-approve \
 # 2. Capture Terraform Outputs
 echo " Mfonudoh Capturing Terraform outputs..."
 ECR_URL=$(terraform output -raw ecr_repo_url)
-LAMBDA_NAME=$(terraform output -raw lambda_name)
 CLUSTER_ARN=$(terraform output -raw ecs_cluster_arn)
 MIGRATION_TASK_DEF_ARN=$(terraform output -raw migration_task_def_arn)
+WORKER_TASK_DEF_ARN=$(terraform output -raw worker_task_def_arn)
 ECS_TASKS_SG_ID=$(terraform output -raw ecs_tasks_security_group_id)
 PUBLIC_SUBNETS_JSON=$(terraform output -json public_subnets)
 
 # Check if outputs are empty
-if [ -z "$ECR_URL" ] || [ -z "$LAMBDA_NAME" ] || [ -z "$CLUSTER_ARN" ] || [ -z "$MIGRATION_TASK_DEF_ARN" ] || [ -z "$ECS_TASKS_SG_ID" ]; then
+if [ -z "$ECR_URL" ] || [ -z "$CLUSTER_ARN" ] || [ -z "$MIGRATION_TASK_DEF_ARN" ] || [ -z "$WORKER_TASK_DEF_ARN" ] || [ -z "$ECS_TASKS_SG_ID" ]; then
     echo "❌ Error: One or more Terraform outputs are empty. Aborting."
     exit 1
 fi
@@ -64,11 +104,10 @@ echo "✅ Terraform outputs captured successfully."
 # 3. Build and Push Docker Image
 echo " Mfonudoh Building and pushing Docker image to ECR..."
 REGISTRY_URL=$(echo "$ECR_URL" | cut -d/ -f1)
-cd ../.. # Go back to the project root
+cd "$SCRIPT_DIR" # Go back to the scraper-module root
 
 aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$REGISTRY_URL"
-docker build -f scraper/Dockerfile -t "$ECR_URL:latest" .
-docker push "$ECR_URL:latest"
+docker buildx build --platform linux/amd64 -f "$SCRIPT_DIR/Dockerfile" -t "$ECR_URL:latest" --push "$SCRIPT_DIR"
 echo "✅ Docker image pushed successfully."
 
 # 4. Apply Database Schema (inside ECS)
@@ -114,17 +153,31 @@ if [ "$MIGRATION_EXIT_CODE" != "0" ]; then
 fi
 
 echo "✅ Database schema applied successfully."
-echo " Mfonudoh IMPORTANT: Please check your email ($ALERT_EMAIL) to confirm the SNS subscription for alerts."
 
 
 # 5. Run One-Time Backfill
 echo " Mfonudoh Triggering the one-time backfill task..."
-aws lambda invoke \
-    --function-name "$LAMBDA_NAME" \
-    --payload '{"mode":"backfill"}' \
-    --cli-binary-format raw-in-base64-out \
-    --region "$AWS_REGION" \
-    backfill_output.json > /dev/null
+BACKFILL_OVERRIDES=$(jq -nc --arg name "$PROJECT_NAME" '{containerOverrides:[{name:$name,environment:[{name:"MODE",value:"backfill"},{name:"APP_NAME",value:"backfill"}]}]}')
+aws ecs run-task \
+    --cluster "$CLUSTER_ARN" \
+    --launch-type FARGATE \
+    --task-definition "$WORKER_TASK_DEF_ARN" \
+    --network-configuration "$NETWORK_CONFIG" \
+    --overrides "$BACKFILL_OVERRIDES" \
+    --region "$AWS_REGION" > /dev/null
 
 echo "✅ Backfill task triggered. Check the ECS console and CloudWatch logs for progress."
+
+# 6. Trigger the transform task once
+echo " Mfonudoh Triggering the transform task..."
+TRANSFORM_OVERRIDES=$(jq -nc --arg name "$PROJECT_NAME" '{containerOverrides:[{name:$name,environment:[{name:"MODE",value:"transform"},{name:"APP_NAME",value:"transform"}]}]}')
+aws ecs run-task \
+    --cluster "$CLUSTER_ARN" \
+    --launch-type FARGATE \
+    --task-definition "$WORKER_TASK_DEF_ARN" \
+    --network-configuration "$NETWORK_CONFIG" \
+    --overrides "$TRANSFORM_OVERRIDES" \
+    --region "$AWS_REGION" > /dev/null
+
+echo "✅ Transform task triggered. Check the ECS console and CloudWatch logs for progress."
 echo " Mfonudoh Deployment complete!"

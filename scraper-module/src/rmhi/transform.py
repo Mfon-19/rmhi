@@ -1,34 +1,31 @@
-import os
-import json
 import asyncio
+import json
 import logging
-import google.generativeai as genai
+import os
 from typing import Dict, Any, List
 
-from .db_ops import (
-    get_untransformed_projects,
-    insert_transformed_projects_and_update_flags,
-)
+import google.generativeai as genai
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+from .db import (
+    advisory_lock,
+    get_untransformed_projects,
+    has_untransformed_projects,
+    insert_transformed_projects_and_update_flags,
 )
 logger = logging.getLogger(__name__)
 
-
 try:
-    from dotenv import load_dotenv
+    from google.api_core.exceptions import ResourceExhausted, TooManyRequests
 
-    load_dotenv()
-except ImportError:
-    logger.info("dotenv not installed, skipping.")
+    _QUOTA_EXCEPTION_TYPES = (ResourceExhausted, TooManyRequests)
+except Exception:
+    _QUOTA_EXCEPTION_TYPES = ()
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    raise ValueError("GOOGLE_API_KEY environment variable not set.")
+from .settings import get_settings
 
-genai.configure(api_key=GOOGLE_API_KEY)
+_GENAI_CONFIGURED = False
 
+TRANSFORM_LOCK_KEY = 9123845
 
 PROMPT = """
 You will receive project ideas in json that I scraped from a public site.
@@ -71,13 +68,37 @@ generation_config = {
     "response_schema": RESPONSE_SCHEMA,
 }
 
+QUOTA_ERROR_TOKENS = (
+    "resource_exhausted",
+    "quota",
+    "too many requests",
+    "rate limit",
+    "429",
+)
+
+
+def _ensure_genai_configured() -> None:
+    global _GENAI_CONFIGURED
+    if _GENAI_CONFIGURED:
+        return
+    cfg = get_settings()
+    google_api_key = os.getenv("GOOGLE_API_KEY", cfg.GOOGLE_API_KEY or "")
+    if not google_api_key:
+        raise ValueError("GOOGLE_API_KEY environment variable not set.")
+    genai.configure(api_key=google_api_key)
+    _GENAI_CONFIGURED = True
+
+
+def _is_quota_error(error: Exception) -> bool:
+    if _QUOTA_EXCEPTION_TYPES and isinstance(error, _QUOTA_EXCEPTION_TYPES):
+        return True
+    message = str(error).lower()
+    return any(token in message for token in QUOTA_ERROR_TOKENS)
+
 
 async def transform_project(
     project_data: Dict[str, Any], semaphore: asyncio.Semaphore
 ) -> Dict[str, Any] | None:
-    """
-    Sends a single project to the Gemini API for transformation.
-    """
     async with semaphore:
         try:
             model = genai.GenerativeModel(
@@ -90,6 +111,11 @@ async def transform_project(
             transformed_data["original_project_id"] = project_data["id"]
             return transformed_data
         except Exception as e:
+            if _is_quota_error(e):
+                logger.warning(
+                    f"Quota exhausted while transforming project ID {project_data.get('id')}: {e}"
+                )
+                raise
             if "API_KEY" in str(e).upper() or "PERMISSION_DENIED" in str(e).upper():
                 logger.critical(
                     f"Critical API Error: {e}. This is likely a configuration issue."
@@ -101,19 +127,17 @@ async def transform_project(
             return None
 
 
-async def run_transformations():
-    """
-    Main function to fetch, transform, and store projects.
-    """
+async def _run_transformations_loop() -> None:
     logger.info("Starting transformation process...")
-    CONCURRENCY_LIMIT = 8
-    BATCH_SIZE = 100
-    semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
+    _ensure_genai_configured()
+    concurrency_limit = 8
+    batch_size = 100
+    semaphore = asyncio.Semaphore(concurrency_limit)
 
     while True:
         try:
             projects_to_transform = await get_untransformed_projects(
-                batch_size=BATCH_SIZE
+                batch_size=batch_size
             )
             if not projects_to_transform:
                 logger.info("No more projects to transform. Exiting.")
@@ -160,5 +184,17 @@ async def run_transformations():
     logger.info("Transformation process finished.")
 
 
-if __name__ == "__main__":
-    asyncio.run(run_transformations())
+async def run_transformations() -> None:
+    async with advisory_lock(TRANSFORM_LOCK_KEY) as acquired:
+        if not acquired:
+            logger.info("Transform already running. Exiting.")
+            return
+        await _run_transformations_loop()
+
+
+async def run_transformations_if_pending() -> None:
+    logger.info("Checking for untransformed projects...")
+    if not await has_untransformed_projects():
+        logger.info("No untransformed projects found. Exiting.")
+        return
+    await run_transformations()
