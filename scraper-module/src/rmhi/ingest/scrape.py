@@ -1,27 +1,40 @@
 import asyncio
 import logging
-import aiohttp
 import httpx
 import re
 import json
+import os
 import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional, Set
 from .state import flip_state_to_ended
+from .gallery import scrape_projects_from_gallery
 from .db_ops import (
     get_ended_hackathons,
     insert_into_project,
-    get_recent_hackathon_urls,
+    get_existing_hackathon_urls,
     insert_into_hackathon,
     insert_into_hackathon_scrape_run,
 )
 
 logger = logging.getLogger(__name__)
-batch_limit = 500
+
+
+def env_int(name: str, default: int) -> int:
+    value = os.getenv(name, str(default)).strip()
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+batch_limit = env_int("SCRAPE_BATCH_LIMIT", 500)
 devpost_api_url = "https://devpost.com/api/hackathons"
-start_page = 1
-end_page = 1500
+start_page = env_int("DEVPOST_START_PAGE", 1)
+end_page = env_int("DEVPOST_END_PAGE", 1500)
+project_page_limit = env_int("PROJECT_PAGE_LIMIT", 1000)
+max_ended_hackathons = env_int("MAX_ENDED_HACKATHONS", 0)
 
 
 async def scrape_hackathon_projects(project_gallery_url: str):
@@ -30,7 +43,7 @@ async def scrape_hackathon_projects(project_gallery_url: str):
     """
     logger.info(f"Scraping projects from {project_gallery_url}")
     try:
-        for i in range(1, 1000):
+        for i in range(1, project_page_limit + 1):
             project_urls = await scrape_projects_from_gallery(project_gallery_url, i)
             logger.info(f"Found {len(project_urls)} projects on page {i}")
             if len(project_urls) == 0:
@@ -42,7 +55,7 @@ async def scrape_hackathon_projects(project_gallery_url: str):
                 if project_info is None or len(project_info) == 0:
                     logger.error(f"Failed to scrape project info for URL {url}")
                     continue
-                hackathon_projects.extend(project_info)
+                hackathon_projects.append(project_info)
 
                 if len(hackathon_projects) >= batch_limit:
                     await insert_into_project(hackathon_projects)
@@ -50,6 +63,12 @@ async def scrape_hackathon_projects(project_gallery_url: str):
                         f"Inserted {len(hackathon_projects)} projects into the database"
                     )
                     hackathon_projects.clear()
+            if hackathon_projects:
+                await insert_into_project(hackathon_projects)
+                logger.info(
+                    f"Inserted {len(hackathon_projects)} projects into the database"
+                )
+                hackathon_projects.clear()
 
     except Exception as e:
         logger.error(
@@ -82,6 +101,10 @@ async def scrape_project_info(project_url: str) -> Optional[Dict[str, str]]:
 
     project_name = get_text_safely(soup.find("h1", id="app-title"))
     short_description = get_text_safely(soup.select_one("#software-header p.large"))
+
+    if not project_name:
+        logger.warning(f"Missing project name for URL {project_url}")
+        return None
 
     details_container = soup.find("div", id="app-details-left")
     problem_description = ""
@@ -121,37 +144,8 @@ async def scrape_project_info(project_url: str) -> Optional[Dict[str, str]]:
         "technical_details": technical_details,
     }
 
-
-async def scrape_projects_from_gallery(url: str, page: int) -> List[str]:
-    """
-    Scrapes project URLs from a given project gallery URL and page number.
-    """
-    target_url = f"{url}?page={page}"
-    project_urls = []
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(target_url) as response:
-                response.raise_for_status()
-                html_content = await response.text()
-
-    except aiohttp.ClientError as e:
-        print(f"An error occurred while fetching the URL {target_url}: {e}")
-        return []
-
-    soup = BeautifulSoup(html_content, "html.parser")
-    link_elements = soup.select("a.block-wrapper-link.link-to-software")
-
-    for link in link_elements:
-        href = link.get("href")
-        if href:
-            project_urls.append(href)
-
-    return project_urls
-
-
 async def scrape_devpost_daily_with_seen_stop() -> None:
-    recent_urls: Set[str] = set(await get_recent_hackathon_urls(100))
+    seen_urls: Set[str] = set()
     should_stop_after_consecutive_empty = 3
     consecutive_without_new = 0
     count = 0
@@ -163,7 +157,7 @@ async def scrape_devpost_daily_with_seen_stop() -> None:
         logger.info(f"[SCRAPE_DEVPOST-DAILY] Scraping page {i}")
         try:
             request = await asyncio.to_thread(
-                requests.get, devpost_api_url + f"?page={i}"
+                requests.get, devpost_api_url + f"?page={i}", timeout=20
             )
             result = request.json()
             hackathons = result.get("hackathons", [])
@@ -171,6 +165,8 @@ async def scrape_devpost_daily_with_seen_stop() -> None:
             if not hackathons:
                 break
 
+            page_candidates: List[Dict] = []
+            page_urls: List[str] = []
             new_on_this_page = 0
             for hackathon in hackathons:
                 url = hackathon.get("url")
@@ -182,19 +178,23 @@ async def scrape_devpost_daily_with_seen_stop() -> None:
                 if not url or not project_gallery_url:
                     continue
 
-                if url in recent_urls:
-                    continue
-
-                recent_urls.add(url)
-                new_on_this_page += 1
-
-                hackathon_data.append(
+                page_candidates.append(
                     {
                         "url": url,
                         "name": name,
                         "project_gallery_url": project_gallery_url,
                     }
                 )
+                page_urls.append(url)
+
+            existing_urls = await get_existing_hackathon_urls(page_urls)
+            for hackathon in page_candidates:
+                url = hackathon["url"]
+                if url in existing_urls or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                new_on_this_page += 1
+                hackathon_data.append(hackathon)
 
             count += len(hackathons)
 
@@ -274,6 +274,8 @@ async def main():
     project_gallery_urls = await get_ended_hackathons()
     if not project_gallery_urls:
         return
+    if max_ended_hackathons > 0:
+        project_gallery_urls = project_gallery_urls[:max_ended_hackathons]
 
     logger.info("[DAILY_SCRAPE] Starting daily scrape")
     for project_gallery_url in project_gallery_urls:

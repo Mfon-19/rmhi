@@ -1,6 +1,6 @@
 from datetime import datetime
 import logging
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Set
 
 from ..common.db import db_conn
 
@@ -28,7 +28,11 @@ async def insert_into_hackathon(hackathons: List[Dict]) -> None:
         )
 
     logger.info(f"Attempting to insert {len(data_to_insert)} hackathons")
-    sql_statement = "INSERT INTO ingest.hackathon (url, name, project_gallery_url) VALUES(%s, %s, %s);"
+    sql_statement = (
+        "INSERT INTO ingest.hackathon (url, name, project_gallery_url) "
+        "VALUES(%s, %s, %s) "
+        "ON CONFLICT DO NOTHING;"
+    )
 
     try:
         async with db_conn(search_path=SEARCH_PATH) as conn:
@@ -38,6 +42,31 @@ async def insert_into_hackathon(hackathons: List[Dict]) -> None:
             logger.info(f"Successfully inserted {len(hackathons)} hackathons")
     except Exception as e:
         logger.error(f"Failed to insert hackathons: {e}, batch size: {len(hackathons)}")
+        raise
+
+
+async def get_existing_hackathon_urls(urls: List[str]) -> Set[str]:
+    if not urls:
+        return set()
+
+    unique_urls = list({url for url in urls if url})
+    if not unique_urls:
+        return set()
+
+    try:
+        async with db_conn(search_path=SEARCH_PATH, readonly=True) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                        SELECT url FROM ingest.hackathon
+                        WHERE url = ANY(%s);
+                    """,
+                    (unique_urls,),
+                )
+                rows = await cur.fetchall()
+                return {row[0] for row in rows}
+    except Exception as e:
+        logger.error(f"Failed to query existing hackathon urls: {e}")
         raise
 
 
@@ -178,10 +207,6 @@ async def insert_into_project(projects: List[Dict]) -> None:
     required_fields = [
         "project_url",
         "project_name",
-        "short_description",
-        "problem_description",
-        "solution",
-        "technical_details",
     ]
     for project in projects:
         for field in required_fields:
@@ -195,6 +220,7 @@ async def insert_into_project(projects: List[Dict]) -> None:
                 project.get("problem_description"),
                 project.get("solution"),
                 project.get("technical_details"),
+                False,
             )
         )
 

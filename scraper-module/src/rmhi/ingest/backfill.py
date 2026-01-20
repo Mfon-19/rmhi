@@ -59,7 +59,7 @@ async def scrape_devpost() -> None:
         logger.info(f"[SCRAPE_DEVPOST] Scraping page {i}")
         try:
             request = await asyncio.to_thread(
-                requests.get, devpost_api_url + f"?page={i}"
+                requests.get, devpost_api_url + f"?page={i}", timeout=20
             )
             result = request.json()
             hackathons = result["hackathons"]
