@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { registerUsername } from "@/lib/server/ideas";
@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 
-export default function CompleteProfile() {
+function CompleteProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const suggestedUsername = searchParams.get("username") ?? "";
@@ -169,5 +169,25 @@ export default function CompleteProfile() {
         </div>
       </div>
     </div>
+  );
+}
+
+function CompleteProfileFallback() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="max-w-md w-full space-y-4">
+        <div className="bg-card rounded-2xl shadow-lg p-8 border border-border text-center text-secondary">
+          Loading...
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CompleteProfile() {
+  return (
+    <Suspense fallback={<CompleteProfileFallback />}>
+      <CompleteProfileContent />
+    </Suspense>
   );
 }

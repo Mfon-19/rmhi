@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.delete("idToken");
   return new Response(null, { status: 204 });
 }
