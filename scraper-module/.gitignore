@@ -1,5 +1,10 @@
 /scraper/hackathons.jsonl
 .env
+__pycache__/
+*.pyc
+.venv/
+scrape.log
+backfill.log
 scraper/app/backfill.log
 infra/terraform/.terraform
 infra/terraform/.terraform.lock.hcl
