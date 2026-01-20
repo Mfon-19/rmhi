@@ -5,12 +5,12 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
-  updateProfile,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerUsername } from "@/lib/server/ideas";
+import { establishSession } from "@/lib/hooks/useAuth";
 import { toast } from "sonner";
 
 export default function SignUp() {
@@ -20,6 +20,24 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  const validateUsername = () => {
+    const normalized = username.trim();
+    if (!normalized) {
+      return "Username is required";
+    }
+
+    if (normalized.length < 3) {
+      return "Username must be at least 3 characters long";
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!usernameRegex.test(normalized)) {
+      return "Username can only contain letters, numbers, and underscores";
+    }
+
+    return null;
+  };
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,21 +50,9 @@ export default function SignUp() {
       return;
     }
 
-    if (!username.trim()) {
-      setError("Username is required");
-      setLoading(false);
-      return;
-    }
-
-    if (username.length < 3) {
-      setError("Username must be at least 3 characters long");
-      setLoading(false);
-      return;
-    }
-
-    const usernameRegex = /^[a-zA-Z0-9_]+$/;
-    if (!usernameRegex.test(username)) {
-      setError("Username can only contain letters, numbers, and underscores");
+    const usernameError = validateUsername();
+    if (usernameError) {
+      setError(usernameError);
       setLoading(false);
       return;
     }
@@ -58,7 +64,14 @@ export default function SignUp() {
         password
       );
       const idToken = await userCredential.user.getIdToken();
-      await registerUsername(idToken, username);
+      try {
+        await registerUsername(idToken, username.trim());
+      } catch {
+        const encoded = encodeURIComponent(username.trim());
+        router.push(`/complete-profile?reason=username&username=${encoded}`);
+        return;
+      }
+      await establishSession(userCredential.user);
       router.push("/");
     } catch (error: any) {
       setError(error.message);
@@ -72,9 +85,25 @@ export default function SignUp() {
     setLoading(true);
     setError("");
 
+    const usernameError = validateUsername();
+    if (usernameError) {
+      setError(usernameError);
+      setLoading(false);
+      return;
+    }
+
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      const idToken = await userCredential.user.getIdToken();
+      try {
+        await registerUsername(idToken, username.trim());
+      } catch {
+        const encoded = encodeURIComponent(username.trim());
+        router.push(`/complete-profile?reason=username&username=${encoded}`);
+        return;
+      }
+      await establishSession(userCredential.user);
       router.push("/");
     } catch (error: any) {
       setError(error.message);

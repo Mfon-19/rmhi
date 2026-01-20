@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import IdeaCard from "./IdeaCard";
 import { Idea, Category, Technology } from "@/lib/types";
 import { getIdeas } from "@/lib/server/ideas";
+import useAuth from "@/lib/hooks/useAuth";
 
 interface MainFeedProps {
   onPostIdea: () => void;
@@ -21,11 +22,16 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
   const [ideas, setIdeas] = useState<IdeaWithLike[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("popular");
   const [loading, setLoading] = useState(true);
+  const { isLoggedIn, sessionReady } = useAuth();
 
   useEffect(() => {
+    let isActive = true;
+
     async function fetchIdeas() {
+      setLoading(true);
       try {
         const fetched: Idea[] = await getIdeas();
+        if (!isActive) return;
 
         const normalized: IdeaWithLike[] = fetched.map((idea) => {
           const normalizedCategories = idea.categories.map((cat, idx) =>
@@ -48,11 +54,29 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
       } catch (err) {
         console.error("Failed to fetch ideas", err);
       } finally {
-        setLoading(false);
+        if (isActive) setLoading(false);
       }
     }
-    fetchIdeas();
-  }, []);
+
+    if (!sessionReady) {
+      return () => {
+        isActive = false;
+      };
+    }
+
+    if (!isLoggedIn) {
+      setIdeas([]);
+      setLoading(false);
+      return () => {
+        isActive = false;
+      };
+    }
+
+    void fetchIdeas();
+    return () => {
+      isActive = false;
+    };
+  }, [isLoggedIn, sessionReady]);
 
   const handleLike = (id: number) => {
     setIdeas((prevIdeas) =>
@@ -105,9 +129,19 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
     );
   }
 
-      return (
+  if (!isLoggedIn && sessionReady) {
+    return (
       <main className="flex-1 max-w-2xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="bg-white border border-border rounded-lg p-6 text-center text-secondary">
+          Sign in to view and share hackathon ideas.
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="flex-1 max-w-2xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
           <h1 className="text-xl font-semibold text-foreground">Feed</h1>
           <SortDropdown value={sortBy} onChange={setSortBy} />
@@ -117,9 +151,9 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
           className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium">
           Post Idea
         </button>
-              </div>
+      </div>
 
-        <div className="space-y-6">
+      <div className="space-y-6">
         {sortedIdeas.map((idea) => (
           <IdeaCard
             key={idea.id}
@@ -130,9 +164,9 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
             onCategoryClick={handleCategoryClick}
           />
         ))}
-              </div>
+      </div>
 
-        <div className="flex justify-center mt-8">
+      <div className="flex justify-center mt-8">
         <button
           onClick={async () => {
             try {

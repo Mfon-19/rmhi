@@ -2,7 +2,12 @@ import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebase/admin";
 
 export async function POST(req: Request) {
-  const { idToken } = await req.json();
+  const body = await req.json().catch(() => null);
+  const idToken = body?.idToken;
+
+  if (!idToken || typeof idToken !== "string") {
+    return new Response(null, { status: 400 });
+  }
 
   try {
     await adminAuth.verifyIdToken(idToken);
@@ -20,4 +25,10 @@ export async function POST(req: Request) {
   } catch {
     return new Response(null, { status: 401 });
   }
+}
+
+export async function DELETE() {
+  const cookieStore = cookies();
+  cookieStore.delete("idToken");
+  return new Response(null, { status: 204 });
 }

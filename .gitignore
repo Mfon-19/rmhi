@@ -44,6 +44,7 @@ next-env.d.ts
 
 /backend/src/main/resources/secret/firebase/serviceAccount.json
 **serviceAccount.json
+*-firebase-adminsdk-*.json
 src/main/resources/
 build
 .gradle

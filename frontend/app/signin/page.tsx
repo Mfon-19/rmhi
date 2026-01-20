@@ -7,6 +7,7 @@ import {
   GoogleAuthProvider,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
+import { establishSession } from "@/lib/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -23,7 +24,12 @@ export default function SignIn() {
     setError("");
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      await establishSession(userCredential.user);
       router.push("/");
     } catch (error: any) {
       setError(error.message);
@@ -38,7 +44,8 @@ export default function SignIn() {
 
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      await establishSession(userCredential.user);
       router.push("/");
     } catch (error: any) {
       setError(error.message);

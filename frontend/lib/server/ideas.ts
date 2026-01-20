@@ -87,6 +87,7 @@ export async function getIdeas() {
     return result;
   } catch (error) {
     console.error("Failed to get ideas");
+    return [];
   }
 }
 

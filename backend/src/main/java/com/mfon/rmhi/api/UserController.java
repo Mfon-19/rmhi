@@ -26,6 +26,9 @@ public class UserController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody RegisterUsernameRequest request
     ) {
+        if (jwt == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
         if (!userService.registerUser(request.username(), jwt)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
         }
