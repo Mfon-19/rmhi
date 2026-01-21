@@ -2,9 +2,10 @@ import asyncio
 import json
 import logging
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from .db import (
     advisory_lock,
@@ -23,9 +24,11 @@ except Exception:
 
 from .settings import get_settings
 
-_GENAI_CONFIGURED = False
+_GENAI_CLIENT: Optional[genai.Client] = None
 
 TRANSFORM_LOCK_KEY = 9123845
+DEFAULT_MODEL_NAME = "gemini-2.5-flash"
+DEFAULT_GEMINI_RPM = 5
 
 PROMPT = """
 You will receive project ideas in json that I scraped from a public site.
@@ -63,10 +66,10 @@ RESPONSE_SCHEMA = {
     ],
 }
 
-generation_config = {
-    "response_mime_type": "application/json",
-    "response_schema": RESPONSE_SCHEMA,
-}
+GENERATION_CONFIG = types.GenerateContentConfig(
+    response_mime_type="application/json",
+    response_schema=RESPONSE_SCHEMA,
+)
 
 QUOTA_ERROR_TOKENS = (
     "resource_exhausted",
@@ -77,16 +80,54 @@ QUOTA_ERROR_TOKENS = (
 )
 
 
+def _get_model_name() -> str:
+    model_name = os.getenv("GEMINI_MODEL", "").strip()
+    normalized = model_name or DEFAULT_MODEL_NAME
+    if normalized.startswith("models/"):
+        return normalized.split("/", 1)[1]
+    return normalized
+
+
+def _get_rate_limit_rpm() -> int:
+    raw = os.getenv("GEMINI_RPM", str(DEFAULT_GEMINI_RPM)).strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        value = DEFAULT_GEMINI_RPM
+    return max(1, value)
+
+
+class RateLimiter:
+    def __init__(self, rpm: int) -> None:
+        self._min_interval = 60.0 / rpm
+        self._lock = asyncio.Lock()
+        self._last_call = 0.0
+
+    async def wait(self) -> None:
+        async with self._lock:
+            now = asyncio.get_running_loop().time()
+            if self._last_call:
+                wait_for = self._min_interval - (now - self._last_call)
+                if wait_for > 0:
+                    await asyncio.sleep(wait_for)
+            self._last_call = asyncio.get_running_loop().time()
+
+
 def _ensure_genai_configured() -> None:
-    global _GENAI_CONFIGURED
-    if _GENAI_CONFIGURED:
+    global _GENAI_CLIENT
+    if _GENAI_CLIENT is not None:
         return
     cfg = get_settings()
     google_api_key = os.getenv("GOOGLE_API_KEY", cfg.GOOGLE_API_KEY or "")
     if not google_api_key:
         raise ValueError("GOOGLE_API_KEY environment variable not set.")
-    genai.configure(api_key=google_api_key)
-    _GENAI_CONFIGURED = True
+    _GENAI_CLIENT = genai.Client(api_key=google_api_key)
+
+
+def _get_client() -> genai.Client:
+    _ensure_genai_configured()
+    assert _GENAI_CLIENT is not None
+    return _GENAI_CLIENT
 
 
 def _is_quota_error(error: Exception) -> bool:
@@ -96,24 +137,60 @@ def _is_quota_error(error: Exception) -> bool:
     return any(token in message for token in QUOTA_ERROR_TOKENS)
 
 
+def _is_model_error(error: Exception) -> bool:
+    message = str(error).lower()
+    return "model" in message and "not found" in message
+
+
+def _get_response_text(response: Any) -> str:
+    text = getattr(response, "text", None)
+    if text:
+        return text
+    try:
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                part_text = getattr(part, "text", None)
+                if part_text:
+                    return part_text
+    except Exception:
+        return ""
+    return ""
+
+
 async def transform_project(
-    project_data: Dict[str, Any], semaphore: asyncio.Semaphore
+    project_data: Dict[str, Any],
+    semaphore: asyncio.Semaphore,
+    rate_limiter: RateLimiter,
 ) -> Dict[str, Any] | None:
     async with semaphore:
         try:
-            model = genai.GenerativeModel(
-                model_name="gemini-1.5-pro", generation_config=generation_config
-            )
+            await rate_limiter.wait()
+            model_name = _get_model_name()
             input_text = f"{PROMPT}\n\nHere is the project data to transform:\n{json.dumps(project_data, indent=2)}"
-            response = await model.generate_content_async(input_text)
+            client = _get_client()
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=model_name,
+                contents=input_text,
+                config=GENERATION_CONFIG,
+            )
 
-            transformed_data = json.loads(response.text)
+            response_text = _get_response_text(response)
+            transformed_data = json.loads(response_text)
             transformed_data["original_project_id"] = project_data["id"]
             return transformed_data
         except Exception as e:
             if _is_quota_error(e):
                 logger.warning(
                     f"Quota exhausted while transforming project ID {project_data.get('id')}: {e}"
+                )
+                raise
+            if _is_model_error(e):
+                logger.critical(
+                    f"Invalid model configured ({_get_model_name()}): {e}"
                 )
                 raise
             if "API_KEY" in str(e).upper() or "PERMISSION_DENIED" in str(e).upper():
@@ -130,9 +207,14 @@ async def transform_project(
 async def _run_transformations_loop() -> None:
     logger.info("Starting transformation process...")
     _ensure_genai_configured()
-    concurrency_limit = 8
+    rpm_limit = _get_rate_limit_rpm()
+    concurrency_limit = min(
+        max(1, int(os.getenv("GEMINI_CONCURRENCY", "1").strip() or "1")),
+        rpm_limit,
+    )
     batch_size = 100
     semaphore = asyncio.Semaphore(concurrency_limit)
+    rate_limiter = RateLimiter(rpm_limit)
 
     while True:
         try:
@@ -145,7 +227,10 @@ async def _run_transformations_loop() -> None:
 
             logger.info(f"Fetched {len(projects_to_transform)} projects to transform.")
 
-            tasks = [transform_project(p, semaphore) for p in projects_to_transform]
+            tasks = [
+                transform_project(p, semaphore, rate_limiter)
+                for p in projects_to_transform
+            ]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             successful_transformations: List[Dict[str, Any]] = []
