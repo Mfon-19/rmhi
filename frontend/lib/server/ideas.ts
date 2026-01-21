@@ -72,7 +72,7 @@ export async function createIdea(idea: Idea) {
 export async function getIdeas() {
   const token = await getToken();
   try {
-    const response = await fetch(`${API_URL}/get-ideas`, {
+    const response = await fetch(`${API_URL}/get-transformed-ideas`, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",

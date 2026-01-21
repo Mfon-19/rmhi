@@ -1,6 +1,7 @@
 package com.mfon.rmhi.api;
 
 import com.mfon.rmhi.api.dto.IdeaResponseDTO;
+import com.mfon.rmhi.api.dto.TransformedIdeaResponseDTO;
 import com.mfon.rmhi.api.request.CreateIdeaRequest;
 import com.mfon.rmhi.api.response.IdeaIdResponse;
 import com.mfon.rmhi.application.IdeaService;
@@ -37,5 +38,13 @@ public class IdeaController {
     @GetMapping("/get-ideas")
     public ResponseEntity<List<IdeaResponseDTO>> getIdeas(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.status(HttpStatus.OK).body(ideaService.getIdeas());
+    }
+
+    @GetMapping("/get-transformed-ideas")
+    public ResponseEntity<List<TransformedIdeaResponseDTO>> getTransformedIdeas(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ideaService.getTransformedIdeas());
     }
 }

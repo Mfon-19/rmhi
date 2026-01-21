@@ -3,8 +3,8 @@ export interface Idea {
   projectName: string;
   likes: number;
   createdBy: string;
-  technologies: Technology[];
-  categories: Category[];
+  technologies: Technology[] | string[];
+  categories: Category[] | string[];
   rating: number;
   shortDescription?: string;
   solution?: string;
