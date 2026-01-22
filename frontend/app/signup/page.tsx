@@ -9,7 +9,7 @@ import {
 import { auth } from "@/lib/firebase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { registerUsername } from "@/lib/server/ideas";
+import { registerUsername } from "@/lib/client/username";
 import { establishSession } from "@/lib/hooks/useAuth";
 import { toast } from "sonner";
 

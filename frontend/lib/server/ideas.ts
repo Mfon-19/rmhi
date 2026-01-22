@@ -69,26 +69,24 @@ export async function createIdea(idea: Idea) {
   }
 }
 
-export async function getIdeas() {
+export async function getIdeas(cursor = 0, limit = 10) {
   const token = await getToken();
-  try {
-    const response = await fetch(`${API_URL}/get-transformed-ideas`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+  const params = new URLSearchParams();
+  params.set("cursor", String(cursor));
+  params.set("limit", String(limit));
+  const url = `${API_URL}/get-transformed-ideas?${params.toString()}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
 
-    if (response.status !== 200) {
-      throw new Error("Failed to get ideas");
-    }
-    const result = await response.json();
-    console.log(JSON.stringify(result, null, 2));
-    return result;
-  } catch (error) {
-    console.error("Failed to get ideas");
-    return [];
+  if (response.status !== 200) {
+    throw new Error("Failed to get ideas");
   }
+  const result = await response.json();
+  return result;
 }
 
 export async function importScrapedIdeas() {

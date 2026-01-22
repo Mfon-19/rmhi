@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -20,6 +21,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api")
 public class IdeaController {
+    private static final int MAX_LIMIT = 50;
+
     private final IdeaService ideaService;
 
     public IdeaController(IdeaService ideaService) {
@@ -42,9 +45,13 @@ public class IdeaController {
 
     @GetMapping("/get-transformed-ideas")
     public ResponseEntity<List<TransformedIdeaResponseDTO>> getTransformedIdeas(
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(name = "cursor", defaultValue = "0") int cursor,
+            @RequestParam(name = "limit", defaultValue = "10") int limit
     ) {
+        int safeCursor = Math.max(cursor, 0);
+        int safeLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(ideaService.getTransformedIdeas());
+                .body(ideaService.getTransformedIdeas(safeCursor, safeLimit));
     }
 }

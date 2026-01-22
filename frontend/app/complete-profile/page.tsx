@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
-import { registerUsername } from "@/lib/server/ideas";
+import { registerUsername } from "@/lib/client/username";
 import { establishSession } from "@/lib/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";

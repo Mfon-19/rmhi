@@ -89,7 +89,7 @@ public class IdeaService {
                 .toList();
     }
 
-    public List<TransformedIdeaResponseDTO> getTransformedIdeas() {
+    public List<TransformedIdeaResponseDTO> getTransformedIdeas(int offset, int limit) {
         String sql = """
                 SELECT id,
                        project_name,
@@ -104,9 +104,10 @@ public class IdeaService {
                        rating
                 FROM ingest.transformed_project
                 ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
                 """;
 
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+        return jdbcTemplate.query(sql, new Object[]{limit, offset}, (rs, rowNum) -> {
             TransformedIdeaResponseDTO dto = new TransformedIdeaResponseDTO();
             dto.setId(rs.getLong("id"));
             dto.setProjectName(rs.getString("project_name"));

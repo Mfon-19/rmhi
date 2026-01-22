@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import IdeaCard from "./IdeaCard";
 import { Idea, Category, Technology } from "@/lib/types";
-import { getIdeas } from "@/lib/server/ideas";
+import { fetchIdeasPage } from "@/lib/client/ideas";
 import useAuth from "@/lib/hooks/useAuth";
 
 interface MainFeedProps {
@@ -18,10 +18,53 @@ type IdeaWithLike = Omit<Idea, "categories" | "technologies"> & {
   isLiked?: boolean;
 };
 
+const PAGE_SIZE = 10;
+
+function normalizeIdeas(ideas: Idea[]): IdeaWithLike[] {
+  return ideas.map((idea) => {
+    const normalizedCategories = idea.categories.map((cat, idx) =>
+      typeof cat === "string" ? { id: idx, name: cat } : cat
+    );
+
+    const normalizedTechnologies = idea.technologies?.map((tech, idx) =>
+      typeof tech === "string" ? { id: idx, name: tech } : tech
+    );
+
+    return {
+      ...idea,
+      categories: normalizedCategories as Category[] | string[],
+      technologies: normalizedTechnologies as Technology[] | string[],
+      isLiked: false,
+    } as IdeaWithLike;
+  });
+}
+
+function mergeIdeas(
+  existing: IdeaWithLike[],
+  incoming: IdeaWithLike[]
+): IdeaWithLike[] {
+  const seen = new Set<number>();
+  for (const idea of existing) {
+    if (idea.id != null) seen.add(idea.id);
+  }
+
+  const merged = [...existing];
+  for (const idea of incoming) {
+    if (idea.id != null && seen.has(idea.id)) continue;
+    if (idea.id != null) seen.add(idea.id);
+    merged.push(idea);
+  }
+
+  return merged;
+}
+
 export default function MainFeed({ onPostIdea }: MainFeedProps) {
   const [ideas, setIdeas] = useState<IdeaWithLike[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("popular");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
   const { isLoggedIn, sessionReady } = useAuth();
 
   useEffect(() => {
@@ -29,28 +72,14 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
 
     async function fetchIdeas() {
       setLoading(true);
+      setLoadingMore(false);
       try {
-        const fetched: Idea[] = await getIdeas();
+        const page = await fetchIdeasPage(null, PAGE_SIZE);
         if (!isActive) return;
-
-        const normalized: IdeaWithLike[] = fetched.map((idea) => {
-          const normalizedCategories = idea.categories.map((cat, idx) =>
-            typeof cat === "string" ? { id: idx, name: cat } : cat
-          );
-
-          const normalizedTechnologies = idea.technologies?.map((tech, idx) =>
-            typeof tech === "string" ? { id: idx, name: tech } : tech
-          );
-
-          return {
-            ...idea,
-            categories: normalizedCategories as Category[] | string[],
-            technologies: normalizedTechnologies as Technology[] | string[],
-            isLiked: false,
-          } as IdeaWithLike;
-        });
-
+        const normalized = normalizeIdeas(page.items);
         setIdeas(normalized);
+        setCursor(page.nextCursor);
+        setHasMore(Boolean(page.nextCursor));
       } catch (err) {
         console.error("Failed to fetch ideas", err);
       } finally {
@@ -66,6 +95,8 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
 
     if (!isLoggedIn) {
       setIdeas([]);
+      setCursor(null);
+      setHasMore(false);
       setLoading(false);
       return () => {
         isActive = false;
@@ -104,18 +135,20 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
     console.log("Filter by category:", category);
   };
 
-  const sortedIdeas = [...ideas].sort((a, b) => {
-    switch (sortBy) {
-      case "popular":
-      case "most-liked":
-      case "trending":
-        return b.likes - a.likes;
-      case "recent":
-        return b.likes - a.likes;
-      default:
-        return 0;
-    }
-  });
+  const sortedIdeas = useMemo(() => {
+    return [...ideas].sort((a, b) => {
+      switch (sortBy) {
+        case "popular":
+        case "most-liked":
+        case "trending":
+          return b.likes - a.likes;
+        case "recent":
+          return b.likes - a.likes;
+        default:
+          return 0;
+      }
+    });
+  }, [ideas, sortBy]);
 
   if (loading) {
     return (
@@ -166,20 +199,30 @@ export default function MainFeed({ onPostIdea }: MainFeedProps) {
         ))}
       </div>
 
-      <div className="flex justify-center mt-8">
-        <button
-          onClick={async () => {
-            try {
-              const more: Idea[] = await getIdeas();
-              setIdeas((prev) => [...prev, ...more]);
-            } catch (err) {
-              console.error("Failed to load more ideas", err);
-            }
-          }}
-          className="px-6 py-3 border border-border rounded-lg hover:bg-gray-50 transition-colors text-secondary hover:text-foreground">
-          Load more ideas
-        </button>
-      </div>
+      {hasMore && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={async () => {
+              if (!cursor || loadingMore) return;
+              setLoadingMore(true);
+              try {
+                const page = await fetchIdeasPage(cursor, PAGE_SIZE);
+                const normalized = normalizeIdeas(page.items);
+                setIdeas((prev) => mergeIdeas(prev, normalized));
+                setCursor(page.nextCursor);
+                setHasMore(Boolean(page.nextCursor));
+              } catch (err) {
+                console.error("Failed to load more ideas", err);
+              } finally {
+                setLoadingMore(false);
+              }
+            }}
+            disabled={loadingMore}
+            className="px-6 py-3 border border-border rounded-lg hover:bg-gray-50 transition-colors text-secondary hover:text-foreground disabled:opacity-60 disabled:cursor-not-allowed">
+            {loadingMore ? "Loading..." : "Load more ideas"}
+          </button>
+        </div>
+      )}
     </main>
   );
 }
