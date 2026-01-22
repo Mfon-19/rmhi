@@ -164,10 +164,15 @@ async def transform_project(
     project_data: Dict[str, Any],
     semaphore: asyncio.Semaphore,
     rate_limiter: RateLimiter,
+    stop_event: asyncio.Event,
 ) -> Dict[str, Any] | None:
     async with semaphore:
         try:
+            if stop_event.is_set():
+                return None
             await rate_limiter.wait()
+            if stop_event.is_set():
+                return None
             model_name = _get_model_name()
             input_text = f"{PROMPT}\n\nHere is the project data to transform:\n{json.dumps(project_data, indent=2)}"
             client = _get_client()
@@ -227,26 +232,45 @@ async def _run_transformations_loop() -> None:
 
             logger.info(f"Fetched {len(projects_to_transform)} projects to transform.")
 
-            tasks = [
-                transform_project(p, semaphore, rate_limiter)
+            stop_event = asyncio.Event()
+            tasks = {
+                asyncio.create_task(
+                    transform_project(p, semaphore, rate_limiter, stop_event)
+                )
                 for p in projects_to_transform
-            ]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
+            }
             successful_transformations: List[Dict[str, Any]] = []
-            for result in results:
-                if isinstance(result, Exception):
-                    logger.critical(
-                        f"Caught a critical exception: {result}. Shutting down after this batch."
-                    )
-                    if successful_transformations:
-                        await insert_transformed_projects_and_update_flags(
-                            successful_transformations
-                        )
-                    return
+            while tasks:
+                done, tasks = await asyncio.wait(
+                    tasks, return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in done:
+                    try:
+                        result = task.result()
+                    except asyncio.CancelledError:
+                        continue
+                    except Exception as exc:
+                        stop_event.set()
+                        if _is_quota_error(exc):
+                            logger.warning(
+                                "Quota exhausted. Stopping immediately to retry later."
+                            )
+                        else:
+                            logger.critical(
+                                f"Caught a critical exception: {exc}. Shutting down after this batch."
+                            )
+                        for pending in tasks:
+                            pending.cancel()
+                        if tasks:
+                            await asyncio.gather(*tasks, return_exceptions=True)
+                        if successful_transformations:
+                            await insert_transformed_projects_and_update_flags(
+                                successful_transformations
+                            )
+                        return
 
-                if result is not None:
-                    successful_transformations.append(result)
+                    if result is not None:
+                        successful_transformations.append(result)
 
             if successful_transformations:
                 logger.info(

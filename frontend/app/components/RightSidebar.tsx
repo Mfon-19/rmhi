@@ -1,200 +1,225 @@
-export default function RightSidebar() {
-  const categories: ReadonlyArray<{
-    name: string;
-    count: number;
-    trend: "up" | "down" | "stable";
-  }> = [
-    { name: "AI & ML", count: 234, trend: "up" },
-    { name: "FinTech", count: 189, trend: "up" },
-    { name: "Health Tech", count: 156, trend: "down" },
-    { name: "Gaming", count: 142, trend: "up" },
-    { name: "E-commerce", count: 128, trend: "stable" },
-  ] as const;
+import CategoryChip, { getCategoryVariant } from "./CategoryChip";
+import { Category, Idea, Technology } from "@/lib/types";
+
+interface CountItem {
+  label: string;
+  count: number;
+}
+
+interface SidebarStats {
+  projectCount: number;
+  contributorCount: number;
+  averageLikes: number;
+  coveragePercent: number;
+}
+
+interface RightSidebarProps {
+  spotlight: Idea | null;
+  topIdeas: Idea[];
+  categories: CountItem[];
+  technologies: CountItem[];
+  stats: SidebarStats;
+  isLoggedIn: boolean;
+  sessionReady: boolean;
+}
+
+function normalizeLabels(items: Array<Category | Technology | string> = []) {
+  return items.map((item) => (typeof item === "string" ? item : item.name));
+}
+
+export default function RightSidebar({
+  spotlight,
+  topIdeas,
+  categories,
+  technologies,
+  stats,
+  isLoggedIn,
+  sessionReady,
+}: RightSidebarProps) {
+  if (!sessionReady) {
+    return (
+      <aside className="hidden xl:block">
+        <div className="glass-panel rounded-2xl p-5 animate-pulse">
+          <div className="h-4 w-32 bg-muted rounded-full" />
+          <div className="mt-4 space-y-3">
+            <div className="h-3 bg-muted rounded-full" />
+            <div className="h-3 bg-muted rounded-full" />
+            <div className="h-3 bg-muted rounded-full" />
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <aside className="hidden xl:block">
+        <div className="glass-panel rounded-2xl p-5 text-sm text-secondary">
+          Sign in to unlock transformation insights.
+        </div>
+      </aside>
+    );
+  }
 
   return (
-    <aside className="hidden xl:block fixed right-0 top-[72px] w-70 h-[calc(100vh-72px)] bg-white border-l border-border overflow-y-auto">
-      <div className="p-4 space-y-6">
-        {/* Top Categories Widget */}
-        <div className="bg-white rounded-lg border border-border p-4">
-          <h3 className="font-semibold text-foreground mb-3">Top Categories</h3>
-          <div className="space-y-2">
-            {categories.map((category, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between py-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-foreground">
-                    {category.name}
-                  </span>
-                  <TrendIcon trend={category.trend} />
-                </div>
-                <span className="text-xs text-secondary">{category.count}</span>
-              </div>
-            ))}
+    <aside className="hidden xl:block">
+      <div className="sticky top-24 space-y-6">
+        <section className="glass-panel rounded-2xl p-5 space-y-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-secondary">
+              Spotlight
+            </p>
+            <h3 className="font-display text-xl text-foreground">
+              Top transformation
+            </h3>
           </div>
-        </div>
-
-        {/* Most Liked This Week Widget */}
-        <div className="bg-white rounded-lg border border-border p-4">
-          <h3 className="font-semibold text-foreground mb-3">
-            Most Liked This Week
-          </h3>
-          <div className="space-y-3">
-            {[
-              {
-                title: "AI-Powered Code Review Assistant",
-                author: "Sarah Chen",
-                likes: 267,
-              },
-              {
-                title: "Virtual Reality Fitness Trainer",
-                author: "Alex Rivera",
-                likes: 203,
-              },
-              {
-                title: "Micro-Investment Gaming App",
-                author: "Jake Wilson",
-                likes: 178,
-              },
-            ].map((idea, index) => (
-              <div
-                key={index}
-                className="border-b border-border last:border-b-0 pb-2 last:pb-0">
-                <h4 className="text-sm font-medium text-foreground line-clamp-2 mb-1">
-                  {idea.title}
+          {spotlight ? (
+            <div className="space-y-3">
+              <div>
+                <h4 className="text-lg font-semibold text-foreground">
+                  {spotlight.projectName}
                 </h4>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-secondary">
-                    by {idea.author}
-                  </span>
-                  <div className="flex items-center space-x-1">
-                    <svg
-                      className="w-3 h-3 text-primary"
-                      fill="currentColor"
-                      viewBox="0 0 24 24">
-                      <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    <span className="text-xs text-secondary">{idea.likes}</span>
-                  </div>
-                </div>
+                <p className="text-sm text-secondary line-clamp-3">
+                  {spotlight.shortDescription ||
+                    spotlight.problemDescription ||
+                    "No summary available yet."}
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="flex flex-wrap gap-2">
+                {normalizeLabels(spotlight.categories).map((label) => (
+                  <CategoryChip
+                    key={label}
+                    label={label}
+                    variant={getCategoryVariant(label)}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center justify-between text-xs text-secondary">
+                <span>by {spotlight.createdBy}</span>
+                <span>{spotlight.likes} likes</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-secondary">
+              Waiting for transformed projects to load.
+            </p>
+          )}
+          {topIdeas.length > 1 && (
+            <div className="border-t border-border/70 pt-4 space-y-2">
+              <p className="text-xs uppercase tracking-[0.2em] text-secondary">
+                Rising
+              </p>
+              {topIdeas.slice(1).map((idea) => (
+                <div
+                  key={idea.id ?? idea.projectName}
+                  className="flex items-center justify-between text-sm">
+                  <span className="text-foreground line-clamp-1">
+                    {idea.projectName}
+                  </span>
+                  <span className="text-xs text-secondary">
+                    {idea.likes} likes
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
-        {/* Community Stats Widget */}
-        <div className="bg-white rounded-lg border border-border p-4">
-          <h3 className="font-semibold text-foreground mb-3">
-            Community Stats
-          </h3>
+        <section className="glass-panel rounded-2xl p-5 space-y-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-secondary">
+              Signals
+            </p>
+            <h3 className="font-display text-xl text-foreground">
+              Category momentum
+            </h3>
+          </div>
           <div className="space-y-3">
-            <StatItem label="Ideas this week" value="127" change="+12%" />
-            <StatItem label="Active members" value="2.4k" change="+5%" />
-            <StatItem label="Comments today" value="89" change="+23%" />
-            <StatItem label="Total ideas" value="15.2k" change="+8%" />
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-secondary mb-2">
+                Top categories
+              </p>
+              <div className="space-y-2">
+                {categories.length === 0 && (
+                  <p className="text-sm text-secondary">
+                    No categories yet.
+                  </p>
+                )}
+                {categories.map((item) => (
+                  <CountRow
+                    key={item.label}
+                    label={item.label}
+                    count={item.count}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-secondary mb-2">
+                Top technologies
+              </p>
+              <div className="space-y-2">
+                {technologies.length === 0 && (
+                  <p className="text-sm text-secondary">
+                    No technologies yet.
+                  </p>
+                )}
+                {technologies.map((item) => (
+                  <CountRow
+                    key={item.label}
+                    label={item.label}
+                    count={item.count}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* Trending Tags Widget */}
-        <div className="bg-white rounded-lg border border-border p-4">
-          <h3 className="font-semibold text-foreground mb-3">Trending Tags</h3>
-          <div className="flex flex-wrap gap-2">
-            {[
-              "#AI",
-              "#MobileApp",
-              "#FinTech",
-              "#Web3",
-              "#Health",
-              "#Gaming",
-              "#SaaS",
-              "#Productivity",
-              "#Social",
-            ].map((tag, index) => (
-              <button
-                key={index}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors">
-                {tag}
-              </button>
-            ))}
+        <section className="glass-panel rounded-2xl p-5 space-y-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-secondary">
+              Metrics
+            </p>
+            <h3 className="font-display text-xl text-foreground">
+              Transformation health
+            </h3>
           </div>
-        </div>
+          <div className="space-y-3">
+            <StatRow label="Projects" value={stats.projectCount.toString()} />
+            <StatRow
+              label="Contributors"
+              value={stats.contributorCount.toString()}
+            />
+            <StatRow
+              label="Avg likes"
+              value={stats.averageLikes.toString()}
+            />
+            <StatRow
+              label="Coverage"
+              value={`${stats.coveragePercent}%`}
+            />
+          </div>
+        </section>
       </div>
     </aside>
   );
 }
 
-function TrendIcon({ trend }: { trend: "up" | "down" | "stable" }) {
-  const icons = {
-    up: (
-      <svg
-        className="w-3 h-3 text-green-500"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M7 17l9.2-9.2M17 17V7m0 10H7"
-        />
-      </svg>
-    ),
-    down: (
-      <svg
-        className="w-3 h-3 text-red-500"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M17 7l-9.2 9.2M7 7v10m0-10h10"
-        />
-      </svg>
-    ),
-    stable: (
-      <svg
-        className="w-3 h-3 text-gray-400"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M20 12H4"
-        />
-      </svg>
-    ),
-  };
-
-  return icons[trend];
+function CountRow({ label, count }: { label: string; count: number }) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-foreground">{label}</span>
+      <span className="text-xs text-secondary">{count}</span>
+    </div>
+  );
 }
 
-function StatItem({
-  label,
-  value,
-  change,
-}: {
-  label: string;
-  value: string;
-  change: string;
-}) {
-  const isPositive = change.startsWith("+");
-
+function StatRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-secondary">{label}</span>
-      <div className="flex items-center space-x-2">
-        <span className="text-sm font-medium text-foreground">{value}</span>
-        <span
-          className={`text-xs ${
-            isPositive ? "text-green-500" : "text-red-500"
-          }`}>
-          {change}
-        </span>
-      </div>
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-secondary">{label}</span>
+      <span className="text-foreground font-medium">{value}</span>
     </div>
   );
 }

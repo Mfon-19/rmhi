@@ -30,21 +30,6 @@ const SUGGESTED_CATEGORIES = [
   "Entertainment",
 ];
 
-const DISPLAY_NAME_TO_CATEGORY: Record<string, string> = {
-  MobileApp: "MOBILE_APP",
-  AI: "AI",
-  FinTech: "FIN_TECH",
-  Web3: "WEB3",
-  Health: "HEALTH",
-  Education: "EDUCATION",
-  Gaming: "GAMING",
-  SaaS: "SAAS",
-  "E-commerce": "E_COMMERCE",
-  Social: "SOCIAL",
-  Productivity: "PRODUCTIVITY",
-  Entertainment: "ENTERTAINMENT",
-};
-
 export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
   const [formData, setFormData] = useState<IdeaFormData>({
     title: "",
@@ -108,10 +93,10 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-card rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-xl font-semibold text-foreground">
+          <h2 className="text-xl font-semibold text-foreground font-display">
             Post Your Idea
           </h2>
           <button
@@ -170,7 +155,7 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
                       type="button"
                       onClick={() => removeCategory(category)}
                       className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 hover:cursor-pointer">
-                      ×
+                      x
                     </button>
                   </div>
                 ))}
@@ -189,7 +174,7 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
                     key={category}
                     type="button"
                     onClick={() => addCategory(category)}
-                    className="text-xs px-2 py-1 border border-border rounded-full hover:bg-gray-50 hover:cursor-pointer transition-colors">
+                    className="text-xs px-2 py-1 border border-border rounded-full hover:bg-muted hover:cursor-pointer transition-colors">
                     #{category}
                   </button>
                 ))}
@@ -211,7 +196,7 @@ export default function PostIdeaModal({ isOpen, onClose }: PostIdeaModalProps) {
               <button
                 type="button"
                 onClick={handleAddCustomCategory}
-                className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 hover:cursor-pointer transition-colors">
+                className="px-3 py-2 text-sm bg-muted text-secondary rounded-lg hover:bg-muted hover:cursor-pointer transition-colors">
                 Add
               </button>
             </div>

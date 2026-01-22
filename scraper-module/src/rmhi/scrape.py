@@ -33,11 +33,11 @@ def env_int(name: str, default: int) -> int:
 
 
 DEVPOST_API_URL = "https://devpost.com/api/hackathons"
-batch_limit = env_int("SCRAPE_BATCH_LIMIT", 500)
-start_page = env_int("DEVPOST_START_PAGE", 1)
-end_page = env_int("DEVPOST_END_PAGE", 1500)
-project_page_limit = env_int("PROJECT_PAGE_LIMIT", 1000)
-max_ended_hackathons = env_int("MAX_ENDED_HACKATHONS", 0)
+BATCH_LIMIT = env_int("SCRAPE_BATCH_LIMIT", 500)
+START_PAGE = env_int("DEVPOST_START_PAGE", 1)
+END_PAGE = env_int("DEVPOST_END_PAGE", 1500)
+PROJECT_PAGE_LIMIT = env_int("PROJECT_PAGE_LIMIT", 1000)
+MAX_ENDED_HACKATHONS = env_int("MAX_ENDED_HACKATHONS", 0)
 
 
 async def scrape_projects_from_gallery(url: str, page: int) -> List[str]:
@@ -133,7 +133,7 @@ async def scrape_project_info(project_url: str) -> Optional[Dict[str, str]]:
 async def scrape_hackathon_projects(project_gallery_url: str) -> None:
     logger.info(f"Scraping projects from {project_gallery_url}")
     try:
-        for i in range(1, project_page_limit + 1):
+        for i in range(1, PROJECT_PAGE_LIMIT + 1):
             project_urls = await scrape_projects_from_gallery(project_gallery_url, i)
             logger.info(f"Found {len(project_urls)} projects on page {i}")
             if len(project_urls) == 0:
@@ -147,7 +147,7 @@ async def scrape_hackathon_projects(project_gallery_url: str) -> None:
                     continue
                 hackathon_projects.append(project_info)
 
-                if len(hackathon_projects) >= batch_limit:
+                if len(hackathon_projects) >= BATCH_LIMIT:
                     await insert_into_project(hackathon_projects)
                     logger.info(
                         f"Inserted {len(hackathon_projects)} projects into the database"
@@ -175,7 +175,7 @@ async def scrape_devpost_daily_with_seen_stop() -> None:
     pending_tasks: List[asyncio.Task] = []
     scrape_started = datetime.now()
 
-    for i in range(start_page, end_page):
+    for i in range(START_PAGE, END_PAGE):
         logger.info(f"[SCRAPE_DEVPOST-DAILY] Scraping page {i}")
         try:
             request = await asyncio.to_thread(
@@ -225,7 +225,7 @@ async def scrape_devpost_daily_with_seen_stop() -> None:
             else:
                 consecutive_without_new = 0
 
-            if len(hackathon_data) >= batch_limit:
+            if len(hackathon_data) >= BATCH_LIMIT:
                 data_copy = hackathon_data.copy()
                 task = asyncio.create_task(insert_into_hackathon(data_copy))
                 pending_tasks.append(task)
@@ -322,8 +322,8 @@ async def run_daily_scrape() -> None:
     project_gallery_urls = await get_ended_hackathons()
     if not project_gallery_urls:
         return
-    if max_ended_hackathons > 0:
-        project_gallery_urls = project_gallery_urls[:max_ended_hackathons]
+    if MAX_ENDED_HACKATHONS > 0:
+        project_gallery_urls = project_gallery_urls[:MAX_ENDED_HACKATHONS]
 
     logger.info("[DAILY_SCRAPE] Starting daily scrape")
     for project_gallery_url in project_gallery_urls:
@@ -365,7 +365,7 @@ async def run_backfill_scrape() -> None:
     pending_tasks: List[asyncio.Task] = []
     scrape_started = datetime.now()
 
-    for i in range(start_page, end_page):
+    for i in range(START_PAGE, END_PAGE):
         if should_stop_scraping:
             logger.info("[SCRAPE_DEVPOST] Stopping due to critical database errors")
             break
@@ -401,7 +401,7 @@ async def run_backfill_scrape() -> None:
             )
             count += len(hackathons)
 
-            if len(hackathon_data) >= batch_limit:
+            if len(hackathon_data) >= BATCH_LIMIT:
                 logger.info(
                     f"[BATCH] Scheduling DB insert for {len(hackathon_data)} hackathons"
                 )

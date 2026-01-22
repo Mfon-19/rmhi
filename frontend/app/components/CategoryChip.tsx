@@ -14,14 +14,14 @@ interface CategoryChipProps {
 }
 
 const categoryColors = {
-  default: "bg-gray-100 text-gray-700 hover:bg-gray-200",
-  mobile: "bg-blue-100 text-blue-700 hover:bg-blue-200",
-  ai: "bg-purple-100 text-purple-700 hover:bg-purple-200",
-  fintech: "bg-green-100 text-green-700 hover:bg-green-200",
-  web3: "bg-orange-100 text-orange-700 hover:bg-orange-200",
-  health: "bg-red-100 text-red-700 hover:bg-red-200",
-  education: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
-  gaming: "bg-pink-100 text-pink-700 hover:bg-pink-200",
+  default: "bg-muted text-secondary hover:bg-muted",
+  mobile: "bg-teal-100 text-teal-900 hover:bg-teal-200",
+  ai: "bg-emerald-100 text-emerald-900 hover:bg-emerald-200",
+  fintech: "bg-amber-100 text-amber-900 hover:bg-amber-200",
+  web3: "bg-sky-100 text-sky-900 hover:bg-sky-200",
+  health: "bg-rose-100 text-rose-900 hover:bg-rose-200",
+  education: "bg-lime-100 text-lime-900 hover:bg-lime-200",
+  gaming: "bg-cyan-100 text-cyan-900 hover:bg-cyan-200",
 };
 
 export default function CategoryChip({
@@ -40,12 +40,7 @@ export default function CategoryChip({
   return (
     <button
       onClick={onClick}
-      className={`
-        inline-flex items-center rounded-full font-medium transition-colors
-        ${sizeClasses[size]}
-        ${colorClasses}
-        ${onClick ? "cursor-pointer" : "cursor-default"}
-      `}>
+      className={`inline-flex items-center rounded-full font-medium transition-colors ${sizeClasses[size]} ${colorClasses} ${onClick ? "cursor-pointer" : "cursor-default"}`}>
       #{label}
     </button>
   );

@@ -1,75 +1,70 @@
 "use client";
 
 import { useState } from "react";
-import useAuth from "@/lib/hooks/useAuth";
 
-export default function TopNavigation() {
+interface TopNavigationProps {
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  onPostIdea: () => void;
+  isLoggedIn: boolean;
+  userInitial?: string;
+  userLabel?: string;
+}
+
+export default function TopNavigation({
+  searchValue,
+  onSearchChange,
+  onPostIdea,
+  isLoggedIn,
+  userInitial,
+  userLabel,
+}: TopNavigationProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, isLoggedIn } = useAuth();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-[72px] bg-white border-b border-border shadow-sm">
-      <div className="flex items-center justify-between h-full px-4 max-w-7xl mx-auto">
-        <div className="flex items-center space-x-2">
-          <span className="text-2xl">🏆</span>
-          <span className="font-semibold text-lg text-foreground">Eureka</span>
-        </div>
-
-        <div className="hidden md:flex flex-1 max-w-md mx-8">
-          <div className="relative w-full">
-            <input
-              type="text"
-              placeholder="Search hackathon projects…"
-              className="w-full px-4 py-2 pl-10 bg-gray-50 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
-            <svg
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-secondary"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/70 bg-card/80 backdrop-blur">
+      <div className="flex items-center justify-between h-[72px] px-4 max-w-6xl mx-auto">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-2xl bg-primary text-white flex items-center justify-center font-display text-lg">
+            E
+          </div>
+          <div className="leading-tight">
+            <p className="font-display text-lg text-foreground">Eureka</p>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-secondary">
+              Transformation lab
+            </p>
           </div>
         </div>
 
-        <div className="hidden lg:flex items-center space-x-6">
-          <DropdownButton label="Hackathons" />
-          <DropdownButton label="Technologies" />
-          <button className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors font-medium hover:cursor-pointer">
-            Submit Project
+        <div className="hidden md:flex flex-1 max-w-lg mx-6">
+          <SearchInput value={searchValue} onChange={onSearchChange} />
+        </div>
+
+        <div className="hidden lg:flex items-center gap-3">
+          <button
+            onClick={onPostIdea}
+            className="px-4 py-2 rounded-full bg-primary text-white font-medium shadow-sm hover:bg-primary/90 transition-colors">
+            Submit project
           </button>
 
           {isLoggedIn ? (
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
-                <svg
-                  className="w-5 h-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-muted text-foreground flex items-center justify-center font-semibold">
+                {userInitial || "U"}
               </div>
+              <span className="text-sm text-secondary">
+                {userLabel || "Profile"}
+              </span>
             </div>
           ) : (
             <>
               <button
-                className="text-secondary hover:text-foreground transition-colors hover:cursor-pointer"
+                className="text-secondary hover:text-foreground transition-colors"
                 onClick={() => (window.location.href = "/signin")}>
                 Sign in
               </button>
               <button
-                className="px-4 py-2 border border-border rounded-full hover:bg-gray-50 transition-colors hover:cursor-pointer"
+                className="px-4 py-2 border border-border rounded-full hover:bg-muted transition-colors"
                 onClick={() => (window.location.href = "/signup")}>
                 Sign up
               </button>
@@ -77,8 +72,10 @@ export default function TopNavigation() {
           )}
         </div>
 
-        <div className="lg:hidden flex items-center space-x-2">
-          <button className="p-2 bg-primary text-white rounded-full">
+        <div className="lg:hidden flex items-center gap-2">
+          <button
+            onClick={onPostIdea}
+            className="p-2 bg-primary text-white rounded-full">
             <svg
               className="w-5 h-5"
               fill="none"
@@ -116,47 +113,37 @@ export default function TopNavigation() {
       </div>
 
       {isMenuOpen && (
-        <div className="lg:hidden bg-white border-t border-border shadow-lg">
-          <div className="px-4 py-2">
-            <input
-              type="text"
-              placeholder="Search hackathon projects…"
-              className="w-full px-4 py-2 pl-10 bg-gray-50 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
+        <div className="lg:hidden border-t border-border/70 bg-card/95 shadow-lg">
+          <div className="px-4 py-3">
+            <SearchInput value={searchValue} onChange={onSearchChange} />
           </div>
-          <div className="px-4 py-2 space-y-2">
-            <MobileNavItem label="Hackathons" />
-            <MobileNavItem label="Technologies" />
-            <div className="pt-2 border-t border-border">
-              {isLoggedIn ? (
-                <div className="flex items-center space-x-3 py-2">
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                    <svg
-                      className="w-5 h-5 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                  </div>
-                  <span className="text-foreground">Profile</span>
+          <div className="px-4 py-3 space-y-3 text-sm">
+            {isLoggedIn ? (
+              <div className="flex items-center gap-3 py-2">
+                <div className="h-10 w-10 rounded-full bg-muted text-foreground flex items-center justify-center font-semibold">
+                  {userInitial || "U"}
                 </div>
-              ) : (
-                <>
-                  <button className="text-secondary hover:text-foreground block w-full text-left py-2">
-                    Sign in
-                  </button>
-                  <button className="text-secondary hover:text-foreground block w-full text-left py-2">
-                    Sign up
-                  </button>
-                </>
-              )}
-            </div>
+                <div>
+                  <p className="text-foreground">
+                    {userLabel || "Profile"}
+                  </p>
+                  <p className="text-xs text-secondary">Signed in</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <button
+                  className="text-secondary hover:text-foreground text-left"
+                  onClick={() => (window.location.href = "/signin")}>
+                  Sign in
+                </button>
+                <button
+                  className="text-secondary hover:text-foreground text-left"
+                  onClick={() => (window.location.href = "/signup")}>
+                  Sign up
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -164,12 +151,25 @@ export default function TopNavigation() {
   );
 }
 
-function DropdownButton({ label }: { label: string }) {
+function SearchInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
   return (
-    <button className="flex items-center space-x-1 text-secondary hover:text-foreground transition-colors">
-      <span>{label}</span>
+    <div className="relative w-full">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search transformed projects"
+        aria-label="Search transformed projects"
+        className="w-full px-4 py-2.5 pl-11 bg-muted border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-transparent"
+      />
       <svg
-        className="w-4 h-4"
+        className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24">
@@ -177,29 +177,9 @@ function DropdownButton({ label }: { label: string }) {
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth={2}
-          d="M19 9l-7 7-7-7"
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
         />
       </svg>
-    </button>
-  );
-}
-
-function MobileNavItem({ label }: { label: string }) {
-  return (
-    <button className="flex items-center justify-between w-full py-2 text-secondary hover:text-foreground transition-colors">
-      <span>{label}</span>
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M19 9l-7 7-7-7"
-        />
-      </svg>
-    </button>
+    </div>
   );
 }
