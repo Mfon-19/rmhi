@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/firebase/client", () => ({ auth: {} }));
+vi.mock("@/lib/firebase/client", () => ({
+  auth: {},
+  ensureAuthPersistence: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("firebase/auth", () => ({
   signOut: vi.fn(),
   onIdTokenChanged: vi.fn(),

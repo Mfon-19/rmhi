@@ -18,6 +18,17 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-await setPersistence(auth, browserSessionPersistence);
+let persistencePromise: Promise<void> | null = null;
+
+export function ensureAuthPersistence() {
+  if (typeof window === "undefined") {
+    return Promise.resolve();
+  }
+  if (!persistencePromise) {
+    persistencePromise = setPersistence(auth, browserSessionPersistence);
+  }
+  return persistencePromise;
+}
+
 export const analytics =
   typeof window !== "undefined" ? getAnalytics(app) : null;

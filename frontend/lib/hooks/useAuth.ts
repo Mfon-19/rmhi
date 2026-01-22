@@ -1,6 +1,6 @@
 import { onIdTokenChanged, signOut, User } from "firebase/auth";
 import { useEffect, useState } from "react";
-import { auth } from "@/lib/firebase/client";
+import { auth, ensureAuthPersistence } from "@/lib/firebase/client";
 
 export default function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -8,6 +8,7 @@ export default function useAuth() {
 
   useEffect(() => {
     let isActive = true;
+    void ensureAuthPersistence();
     const unsub = onIdTokenChanged(auth, (u) => {
       setUser(u);
       setSessionReady(false);

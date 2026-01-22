@@ -6,7 +6,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase/client";
+import { auth, ensureAuthPersistence } from "@/lib/firebase/client";
 import { establishSession } from "@/lib/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -24,6 +24,7 @@ export default function SignIn() {
     setError("");
 
     try {
+      await ensureAuthPersistence();
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
@@ -43,6 +44,7 @@ export default function SignIn() {
     setError("");
 
     try {
+      await ensureAuthPersistence();
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
       await establishSession(userCredential.user);

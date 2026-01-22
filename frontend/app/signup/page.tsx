@@ -6,7 +6,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase/client";
+import { auth, ensureAuthPersistence } from "@/lib/firebase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerUsername } from "@/lib/client/username";
@@ -58,6 +58,7 @@ export default function SignUp() {
     }
 
     try {
+      await ensureAuthPersistence();
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -93,6 +94,7 @@ export default function SignUp() {
     }
 
     try {
+      await ensureAuthPersistence();
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
       const idToken = await userCredential.user.getIdToken();
