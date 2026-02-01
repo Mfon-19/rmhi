@@ -162,8 +162,8 @@ def get_ideas_page(
     return IdeasPage(items=items, nextCursor=next_cursor)
 
 
-@app.get("/cron/hourly")
-async def cron_hourly():
+@app.get("/cron/daily")
+async def cron_daily():
     from pyapp.scraper_runner import run_once
 
     result = await run_once()
