@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 300
+    },
+    "api/[...path].py": {
+      "maxDuration": 300
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/hourly",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

@@ -26,6 +26,3 @@ Key env vars:
 - `DB_DSN`
 - `GOOGLE_API_KEY`
 - `MODE` (optional override for the CLI)
-
-Deployment notes:
-- Terraform uses the region's default VPC and default subnets.

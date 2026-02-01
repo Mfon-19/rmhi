@@ -1,0 +1,13 @@
+fastapi>=0.115.0
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+psycopg[binary,pool]>=3.1.19
+firebase-admin>=6.5.0
+
+# scraper deps
+aiohttp
+beautifulsoup4
+google-genai
+httpx
+python-dotenv
+requests
